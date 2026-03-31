@@ -1,60 +1,64 @@
-﻿using System.Collections;
 using UnityEngine;
-
 
 public class WeaponHook : MonoBehaviour
 {
-	public int currentAmmo;
-	public int allAmmo = 40;
-	[HideInInspector]
-	public WeaponItem baseItem;
-	ParticleSystem[] particles;
-	public Transform bulletEmmiter;
-	public AudioSource gunSoundSource;
-	public AudioClip[] gunSound;
+    // ============================
+    // Serialized Fields
+    // ============================
 
-    private void Start()
-    {
-    }
+    public int currentAmmo;
+    public int allAmmo = 40;
+    [HideInInspector] public WeaponItem baseItem;
+    public Transform bulletEmmiter;
+    public AudioSource gunSoundSource;
+    public AudioClip[] gunSound;
+
+    // ============================
+    // State
+    // ============================
+
+    ParticleSystem[] particles;
+
+    // ============================
+    // Public API
+    // ============================
+
     public void Init(WeaponItem weaponItem)
-	{
-		particles = GetComponentsInChildren<ParticleSystem>();
-		baseItem = weaponItem;
-		currentAmmo = baseItem.magazineAmmo;
-	}
+    {
+        particles = GetComponentsInChildren<ParticleSystem>();
+        baseItem = weaponItem;
+        currentAmmo = baseItem.magazineAmmo;
+    }
 
-	public void Shoot()
-	{
-		Debug.Log("Shoot");
-		int randomIndez = Random.Range(0,gunSound.Length);
-		gunSoundSource.clip = gunSound[randomIndez];
-		gunSoundSource.Play();	
-		if (particles != null)
-		{
-			for (int i = 0; i < particles.Length; i++)
-			{
-				particles[i].Play();
-			}
-		}
+    public void Shoot()
+    {
+        if (gunSound != null && gunSound.Length > 0 && gunSoundSource != null)
+        {
+            gunSoundSource.clip = gunSound[Random.Range(0, gunSound.Length)];
+            gunSoundSource.Play();
+        }
 
-		currentAmmo--;
+        if (particles != null)
+        {
+            for (int i = 0; i < particles.Length; i++)
+                particles[i].Play();
+        }
 
+        currentAmmo--;
+        GameReferences.UpdateLastKnownPositionOfCloseby(transform.position, 50);
+    }
 
-		GameReferences.UpdateLastKnownPositionOfCloseby(transform.position, 50);
-		
-	}
-
-	public void Reload()
-	{
-		if (allAmmo <= baseItem.magazineAmmo)
-		{
-			currentAmmo = allAmmo;
-			allAmmo = 0;
-		}
-		else
-		{
-			currentAmmo = baseItem.magazineAmmo;
-			allAmmo -= baseItem.magazineAmmo;
-		}
-	}
+    public void Reload()
+    {
+        if (allAmmo <= baseItem.magazineAmmo)
+        {
+            currentAmmo = allAmmo;
+            allAmmo = 0;
+        }
+        else
+        {
+            currentAmmo = baseItem.magazineAmmo;
+            allAmmo -= baseItem.magazineAmmo;
+        }
+    }
 }

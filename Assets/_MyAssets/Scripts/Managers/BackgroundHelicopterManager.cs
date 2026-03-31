@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class BackgroundHelicopterManager : MonoBehaviour
@@ -31,15 +29,14 @@ public class BackgroundHelicopterManager : MonoBehaviour
         }
 
         float verticalStep = verticalSpeed * Time.deltaTime;
-        transform.Translate(Vector3.up * verticalStep);
+        if (movingUp)
+            transform.Translate(Vector3.up * verticalStep);
+        else
+            transform.Translate(Vector3.down * verticalStep);
 
         if (movingUp && transform.position.y >= upperLimit)
-        {
             movingUp = false;
-        }
         else if (!movingUp && transform.position.y <= lowerLimit)
-        {
             movingUp = true;
-        }
     }
 }

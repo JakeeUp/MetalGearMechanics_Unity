@@ -1,148 +1,145 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
-
 public class InventoryManager : MonoBehaviour
 {
-	public Transform rightHand;
-	public AudioSource pickupAudioSource;
-	public AudioClip pickupAudioClip;
-	public WeaponItem currentWeapon
-	{
-		get
-		{
-			if (currentWeaponHook == null)
-				return null;
+    // ============================
+    // Serialized Fields
+    // ============================
 
-			return currentWeaponHook.baseItem;
-		}
-	}
-	public WeaponHook currentWeaponHook;
+    public Transform rightHand;
+    public AudioSource pickupAudioSource;
+    public AudioClip pickupAudioClip;
 
-	public List<Item> pickedUpItems = new List<Item>();
-	public List<WeaponItem> allWeapons;
-	Dictionary<WeaponItem, WeaponHook> weaponsDict = new Dictionary<WeaponItem, WeaponHook>();
+    // ============================
+    // Weapon State
+    // ============================
 
-	Controller playerController;
-	PassiveItem currentPassiveItem;
+    public WeaponHook currentWeaponHook;
+    public List<Item> pickedUpItems = new List<Item>();
+    public List<WeaponItem> allWeapons;
+    Dictionary<WeaponItem, WeaponHook> weaponsDict = new Dictionary<WeaponItem, WeaponHook>();
 
-	private void Start()
-	{
-		pickupAudioSource = GetComponent<AudioSource>();
+    // ============================
+    // References
+    // ============================
 
-		if (allWeapons.Count > 0)
-			LoadWeapon(allWeapons[0]);
+    Controller playerController;
+    PassiveItem currentPassiveItem;
 
-		playerController = GetComponent<Controller>();
+    // ============================
+    // Properties
+    // ============================
 
-		if (playerController.inventoryManager == null)
-		{
-			Debug.LogError("InventoryManager is null during the assignment in InputHandler.");
-		}
-		else
-		{
-			Debug.Log("InventoryManager is assigned.");
-			UIManager.singleton.Init(playerController.inventoryManager);
-			Debug.Log("UIManager initialized with InventoryManager.");
-		}
-	}
+    public WeaponItem currentWeapon
+    {
+        get
+        {
+            if (currentWeaponHook == null)
+                return null;
+            return currentWeaponHook.baseItem;
+        }
+    }
 
-	public void PickUpItem(Item item)
-	{
-		if (item is WeaponItem)
-		{
-			pickedUpItems.Add(item);
-			Debug.Log("Picked Item Up");
-			pickupAudioSource.clip = pickupAudioClip;
-			pickupAudioSource.Play();
-			WeaponItem w = (WeaponItem)item;
-			if (allWeapons.Contains(w))
-			{
+    // ============================
+    // Lifecycle
+    // ============================
 
-			}
-			else
-			{
-				allWeapons.Add(w);
-				LoadWeapon(w);
-			}
-		}
+    private void Start()
+    {
+        pickupAudioSource = GetComponent<AudioSource>();
+        playerController = GetComponent<Controller>();
 
-		if (item is PassiveItem)
-		{
-			pickedUpItems.Add(item);
-		}
-	}
+        if (allWeapons.Count > 0)
+            LoadWeapon(allWeapons[0]);
+    }
 
-	public void SwitchWeapon()
-	{
-		if (allWeapons.Count <= 0)
-		{
-			return;
-		}
+    // ============================
+    // Public API — Pickup
+    // ============================
 
-		int index = 0;
-		if (allWeapons.Contains(currentWeapon))
-		{
-			index = allWeapons.IndexOf(currentWeapon);
-		}
+    public void PickUpItem(Item item)
+    {
+        if (item is WeaponItem weapon)
+        {
+            pickedUpItems.Add(item);
 
-		index++;
-		if (index > allWeapons.Count - 1)
-		{
-			index = 0;
-		}
+            if (pickupAudioSource != null && pickupAudioClip != null)
+            {
+                pickupAudioSource.clip = pickupAudioClip;
+                pickupAudioSource.Play();
+            }
 
-		LoadWeapon(allWeapons[index]);
-	}
+            if (!allWeapons.Contains(weapon))
+            {
+                allWeapons.Add(weapon);
+                LoadWeapon(weapon);
+            }
+        }
+        else if (item is PassiveItem)
+        {
+            pickedUpItems.Add(item);
+        }
+    }
 
-	public void LoadItem(Item targetItem)
-	{
-		if (targetItem is WeaponItem)
-		{
-			LoadWeapon((WeaponItem)targetItem);
-		}
+    // ============================
+    // Public API — Weapon Switching
+    // ============================
 
-		if (playerController != null)
-		{
-			if (targetItem is PassiveItem)
-			{
-				if (currentPassiveItem != null)
-				{
-					currentPassiveItem.OnUnEquip(playerController);
-				}
+    public void SwitchWeapon()
+    {
+        if (allWeapons.Count <= 0)
+            return;
 
-				PassiveItem passive = (PassiveItem)targetItem;
-				passive.OnEquip(playerController);
-				currentPassiveItem = passive;
-			}
-		}
-	}
+        int weaponIndex = 0;
+        if (currentWeapon != null && allWeapons.Contains(currentWeapon))
+            weaponIndex = allWeapons.IndexOf(currentWeapon);
 
-	public void LoadWeapon(WeaponItem weaponItem)
-	{
-		if (currentWeaponHook != null)
-		{
-			currentWeaponHook.gameObject.SetActive(false);
-		}
+        weaponIndex = (weaponIndex + 1) % allWeapons.Count;
+        LoadWeapon(allWeapons[weaponIndex]);
+    }
 
-		if (weaponsDict.ContainsKey(weaponItem))
-		{
-			weaponsDict.TryGetValue(weaponItem, out currentWeaponHook);
-		}
-		else
-		{
-			GameObject go = Instantiate(weaponItem.prefab);
-			go.transform.parent = rightHand;
-			go.transform.localPosition = Vector3.zero;
-			go.transform.localRotation = Quaternion.identity;
-			go.transform.localScale = Vector3.one;
-			currentWeaponHook = go.GetComponentInChildren<WeaponHook>();
-			weaponsDict.Add(weaponItem, currentWeaponHook);
-		}
+    // ============================
+    // Public API — Item Loading
+    // ============================
 
-		currentWeaponHook.gameObject.SetActive(true);
-		currentWeaponHook.Init(weaponItem);
-	}
+    public void LoadItem(Item targetItem)
+    {
+        if (targetItem is WeaponItem weapon)
+        {
+            LoadWeapon(weapon);
+        }
+        else if (targetItem is PassiveItem passive && playerController != null)
+        {
+            if (currentPassiveItem != null)
+                currentPassiveItem.OnUnEquip(playerController);
+
+            passive.OnEquip(playerController);
+            currentPassiveItem = passive;
+        }
+    }
+
+    public void LoadWeapon(WeaponItem weaponItem)
+    {
+        if (currentWeaponHook != null)
+            currentWeaponHook.gameObject.SetActive(false);
+
+        if (weaponsDict.ContainsKey(weaponItem))
+        {
+            weaponsDict.TryGetValue(weaponItem, out currentWeaponHook);
+        }
+        else
+        {
+            GameObject go = Instantiate(weaponItem.prefab);
+            go.transform.parent = rightHand;
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            currentWeaponHook = go.GetComponentInChildren<WeaponHook>();
+            weaponsDict.Add(weaponItem, currentWeaponHook);
+        }
+
+        currentWeaponHook.gameObject.SetActive(true);
+        currentWeaponHook.Init(weaponItem);
+    }
 }

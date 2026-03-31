@@ -1,14 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-
-
 
 public class CameraManager : MonoBehaviour
 {
-	public GameObject mainCameraObject;
-	public GameObject wallCameraObject;
-	public GameObject fpsCameraObject;
-	public Transform camTransform;
-	public Camera mainCamera;
+    public GameObject mainCameraObject;
+    public GameObject wallCameraObject;
+    public GameObject fpsCameraObject;
+    public Transform camTransform;
+    public Camera mainCamera;
 }

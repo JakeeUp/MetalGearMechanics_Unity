@@ -1,57 +1,34 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Jacob.Utilities;
 
-
-
 public class ItemSlot : MonoBehaviour
 {
-	public Image img;
-	public Item targetItem;
+    public Image img;
+    public Item targetItem;
 
-	private void OnEnable()
-	{
-		if (UIManager.singleton == null || targetItem == null)
-		{
-			Debug.LogError("UIManager or targetItem is null");
-			return;
-		}
+    private void OnEnable()
+    {
+        if (UIManager.singleton == null || targetItem == null)
+            return;
 
-		bool isValid = UIManager.singleton.isInInventory(targetItem);
+        bool isValid = UIManager.singleton.isInInventory(targetItem);
+        if (!isValid)
+            gameObject.SetActive(false);
+    }
 
-		if (targetItem != null)
-		{
-			if (!isValid)
-			{
-				this.gameObject.SetActive(false);
-			}
-		}
-		else
-		{
-			this.gameObject.SetActive(false);
-		}
-	}
+    public void LoadItem(Item item)
+    {
+        targetItem = item;
 
-	public void LoadItem(Item targetItem)
-	{
+        if (targetItem.inventoryIcon == null)
+            IconMaker.RequestIcon(targetItem, LoadIcon);
+        else
+            LoadIcon();
+    }
 
-		this.targetItem = targetItem;
-
-		if (targetItem.inventoryIcon == null)
-		{
-			IconMaker.RequestIcon(targetItem, LoadIcon);
-		}
-		else
-		{
-			LoadIcon();
-		}
-	}
-
-	void LoadIcon()
-	{
-		img.sprite = targetItem.inventoryIcon;
-	}
+    void LoadIcon()
+    {
+        img.sprite = targetItem.inventoryIcon;
+    }
 }
-

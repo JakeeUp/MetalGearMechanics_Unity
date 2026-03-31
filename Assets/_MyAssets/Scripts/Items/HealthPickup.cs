@@ -1,31 +1,20 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+
 public class HealthPickup : MonoBehaviour
 {
-    [SerializeField] private int healthIncrease = 20; // The amount of health to increase when picked up.
-   
+    [SerializeField] private int healthIncrease = 20;
 
-    private void Start()
-    {
-    }
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("GameController"))
+        if (!other.CompareTag("GameController"))
+            return;
+
+        Controller controller = other.GetComponent<Controller>();
+        if (controller != null && controller.currentHealth < controller.maxHealth)
         {
-
-
-            Controller controller = other.GetComponent<Controller>();
-            if (controller != null)
-            {
-                Debug.Log("health pickup");
-                if (controller.currentHealth < 100)
-                {
-                    controller.currentHealth += 10;
-
-                }
-                Destroy(this.gameObject);
-            }
+            controller.currentHealth += healthIncrease;
+            controller.currentHealth = Mathf.Min(controller.currentHealth, controller.maxHealth);
+            Destroy(gameObject);
         }
     }
 }

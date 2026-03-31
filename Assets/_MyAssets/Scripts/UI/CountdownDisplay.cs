@@ -1,7 +1,4 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 public class CountdownDisplay : MonoBehaviour
@@ -13,16 +10,19 @@ public class CountdownDisplay : MonoBehaviour
     public AudioClip audioClip;
     public bool alertOn;
 
+    float lastDisplayedValue;
+
     private void Start()
     {
         audioSource = GetComponent<AudioSource>();
         alertOn = false;
     }
+
     void Update()
     {
         if (aiController == null)
         {
-            timerUI.SetActive(false); // Hide UI if no AIController is assigned
+            timerUI.SetActive(false);
             return;
         }
 
@@ -31,22 +31,29 @@ public class CountdownDisplay : MonoBehaviour
         if (countdownValue > 1)
         {
             timerUI.SetActive(true);
-            countdownTextMeshPro.text = countdownValue.ToString("F2");
 
-            if (!alertOn) // If the alert has not been activated yet
+            // Only update text when the displayed value actually changes (avoids string alloc per frame)
+            float truncated = Mathf.Floor(countdownValue * 100f) * 0.01f;
+            if (truncated != lastDisplayedValue)
             {
-                alertOn = true; // Set alertOn to true to indicate that the alert has been activated
-                audioSource.PlayOneShot(audioClip); // Play the audio once
+                lastDisplayedValue = truncated;
+                countdownTextMeshPro.text = countdownValue.ToString("F2");
+            }
+
+            if (!alertOn)
+            {
+                alertOn = true;
+                audioSource.PlayOneShot(audioClip);
             }
         }
         else
         {
             timerUI.SetActive(false);
-            alertOn = false; // Reset alertOn for the next time
+            alertOn = false;
+            lastDisplayedValue = 0;
         }
     }
 
-    // Method to update the AIController reference
     public void SetAIController(AIController newAIController)
     {
         aiController = newAIController;

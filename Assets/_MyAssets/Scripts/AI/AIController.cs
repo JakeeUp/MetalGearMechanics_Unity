@@ -1,655 +1,697 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
 
-
 public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 {
-	NavMeshAgent agent;
-	new Rigidbody rigidbody;
-	public Animator animator;
+    // ============================
+    // Component References
+    // ============================
 
-	InventoryManager inventoryManager;
-	public float currentHealth { get; private set; }
-	public float maxHealth = 100f;
-	[Header("Waypoint Index")]
-	[Space(5)]
-	public int index;
-	public Waypoint[] waypoints;
-	Waypoint currentWaypoint;
-	Transform mTransform;
+    NavMeshAgent agent;
+    new Rigidbody rigidbody;
+    public Animator animator;
+    InventoryManager inventoryManager;
+    Transform mTransform;
 
-	[Header("Bools")]
-	[Space(5)]
-	[SerializeField]private bool _isAgressive;
-	public bool isAgressive { get { return _isAgressive; } set { _isAgressive = value; } }
-	[SerializeField] private bool isCaution;
-	[SerializeField] private bool isGrab;
-	public bool isDead;
-	public bool isSpottedDead;
+    // ============================
+    // Health
+    // ============================
 
-	[Header("Wait Timer")]
-	[Space(5)]
-	float waitTimer;
-	float cautionTimer;
-	public float alarmTimer;
-	
+    public float currentHealth { get; private set; }
+    public float maxHealth = 100f;
 
-	public float cautionTimerNormal = .7f;
+    // ============================
+    // Waypoints
+    // ============================
 
-	[Header("Attributes")]
-	[Space(5)]
-	public float normalSpeed = 2;
-	public float aggressiveSpeed = 4;
-	public float rotateSpeed = .5f;
+    [Header("Waypoint Index")]
+    [Space(5)]
+    public int index;
+    public Waypoint[] waypoints;
+    Waypoint currentWaypoint;
 
- 
+    // ============================
+    // State Flags
+    // ============================
 
+    [Header("Bools")]
+    [Space(5)]
+    [SerializeField] private bool _isAgressive;
+    public bool isAgressive { get { return _isAgressive; } set { _isAgressive = value; } }
+    [SerializeField] private bool isCaution;
+    [SerializeField] private bool isGrab;
+    public bool isDead;
+    public bool isSpottedDead;
+
+    // ============================
+    // Timers
+    // ============================
+
+    [Header("Wait Timer")]
+    [Space(5)]
+    float waitTimer;
+    float cautionTimer;
+    public float alarmTimer;
+    public float cautionTimerNormal = .7f;
+
+    // ============================
+    // Movement
+    // ============================
+
+    [Header("Attributes")]
+    [Space(5)]
+    public float normalSpeed = 2;
+    public float aggressiveSpeed = 4;
+    public float rotateSpeed = .5f;
     public float fovRadius = 20;
-	public float fovAngle = 45;
+    public float fovAngle = 45;
 
-	[Header("Attack Attributes")]
-	[Space(5)]
-	[SerializeField]private float damageAmount = 10f;
-	public float weaponSpread = .3f;
-	public int magBullets = 40;
-	int bulletsToFire;
-	int timesShot;
-	public int timesStruggle;
-	float lastCautionPlayed;
-	public float DamageAmount
-	{
-		get { return damageAmount; }
-		set { damageAmount = value; }
-	}
+    // ============================
+    // Combat
+    // ============================
 
-	public float attackDistance = 5;
-	Vector3 lastKnownPosition;
-	Vector3 lastKnownDirection;
+    [Header("Attack Attributes")]
+    [Space(5)]
+    [SerializeField] private float damageAmount = 10f;
+    public float weaponSpread = .3f;
+    public int magBullets = 40;
+    int bulletsToFire;
+    int timesShot;
+    public int timesStruggle;
+    float lastCautionPlayed;
 
-	Controller currentTarget;
+    public float DamageAmount
+    {
+        get { return damageAmount; }
+        set { damageAmount = value; }
+    }
 
-	LayerMask controllerLayer;
-	LayerMask ignoreForDetection;
+    public float attackDistance = 5;
+    Vector3 lastKnownPosition;
+    Vector3 lastKnownDirection;
+    Controller currentTarget;
+    LayerMask controllerLayer;
+    LayerMask ignoreForDetection;
 
-	public TextMeshPro emotionText;
-	public GameObject emotionObj;
+    // ============================
+    // UI
+    // ============================
+
+    public TextMeshPro emotionText;
+    public GameObject emotionObj;
+
+    // ============================
+    // Audio
+    // ============================
 
     [Header("Sound Attributes")]
     [Space(5)]
-    [SerializeField]private AudioSource hitSoundSource;
-	[SerializeField]private AudioClip[] hitSoundClips;
-	private void Start()
-	{
-		hitSoundSource = GetComponent<AudioSource>();
-		agent = GetComponentInChildren<NavMeshAgent>();
-		rigidbody = GetComponentInChildren<Rigidbody>();
-		animator = GetComponentInChildren<Animator>();
-		inventoryManager = GetComponentInChildren<InventoryManager>();
-		if(waypoints.Length > 0)
-			currentWaypoint = waypoints[index];
+    [SerializeField] private AudioSource hitSoundSource;
+    [SerializeField] private AudioClip[] hitSoundClips;
 
-		mTransform = this.transform;
-		animator.applyRootMotion = false;
-		controllerLayer = (1 << 9 );
-		ignoreForDetection = ~( 1 << 12 | 1 << 13);
-		currentHealth = maxHealth;
-		GameReferences.damage = damageAmount;
+    // ============================
+    // Shooting State
+    // ============================
 
-	}
-	private void Update()
-	{
+    public float fireRate = .1f;
+    float currentFire;
+    bool initRange;
+    public ParticleSystem muzzleFire;
 
-		float delta = Time.deltaTime;
-		if (currentHealth <= 0)
-		{
-			animator.Play("grab_death");
-			this.enabled = false;
-			Debug.Log("Enemy Dead");
-			isDead = true;
-		}
-		
-		if (isGrab)
-		{
-			//agent.isStopped = true;
-			return;
-		}
+    // ============================
+    // Search / Scan
+    // ============================
 
-		if (animator.GetBool("isInteracting"))
-		{
-			agent.isStopped = true;
-			if (animator.GetBool("canRotate"))
-			{
-				HandleLookAtTarget(delta);
-			}
+    public enum AIPhase { scanRan, searchRan, searchPOI }
 
-			return;
-		}
+    [Header("Scan Settings")]
+    [Space(5)]
+    public AIPhase aIPhase;
+    public float scanTime;
+    public float minScanTime = 1;
+    public float maxScanTime = 3;
+    public bool hasTargetRotation;
 
-		animator.SetBool("isAggressive", isAgressive);
-		animator.SetBool("isCaution", isCaution);
+    // ============================
+    // Detection
+    // ============================
 
+    public Transform poiTransform;
+    public bool spotted;
+    public string hitFx = "blood";
 
-		if (!isAgressive)
-		{
-			agent.speed = normalSpeed;
-			HandleDetection();
-			HandleNormalLogic(delta);
-		}
-		else
-		{
-			if (isCaution)
-			{
-				if (cautionTimer < 0)
-				{
-					isCaution = false;
-					agent.isStopped = false;
-				}
-				else
-				{
-					if (animator.GetBool("canRotate"))
-					{
-						HandleLookAtTarget(delta);
-					}
+    // ============================
+    // Physics Buffers (NonAlloc)
+    // ============================
 
-					agent.isStopped = true;
-					cautionTimer -= delta;
-				}
-			}
-			else
-			{
-				agent.speed = aggressiveSpeed;
-				HandleAggressiveLogic(delta);
-			}
+    static readonly Collider[] detectionBuffer = new Collider[16];
 
-			if(alarmTimer > 0)
-            {
-				alarmTimer -= delta;
-            }
-			else
-            {
-				alarmTimer = 0;
-				isCaution = false;
-				isAgressive = false;
-				currentTarget = null;
-            }
-		}
-	}
+    // ============================
+    // Cached Values
+    // ============================
 
-	private void HandleNormalLogic(float delta)
-	{
-		if (waypoints.Length == 0)
-			return;
+    float cachedFovAngleCos;
+    float sqrAttackDistance;
 
+    // ============================
+    // Lifecycle
+    // ============================
 
-		currentWaypoint = waypoints[index];
+    private void Start()
+    {
+        hitSoundSource = GetComponent<AudioSource>();
+        agent = GetComponentInChildren<NavMeshAgent>();
+        rigidbody = GetComponentInChildren<Rigidbody>();
+        animator = GetComponentInChildren<Animator>();
+        inventoryManager = GetComponentInChildren<InventoryManager>();
+        mTransform = transform;
 
-		float dis = Vector3.Distance(mTransform.position, currentWaypoint.targetPosition.position);
-		if (dis > agent.stoppingDistance)
-		{
-			animator.SetFloat("movement", 1, 0.1f, delta);
-			agent.updateRotation = true;
+        if (waypoints.Length > 0)
+            currentWaypoint = waypoints[index];
 
-			if (agent.hasPath == false)
-				agent.SetDestination(currentWaypoint.targetPosition.position);
-		}
-		else
-		{
-			animator.SetFloat("movement", 0, 0.1f, delta);
+        animator.applyRootMotion = false;
+        controllerLayer = 1 << 9;
+        ignoreForDetection = ~(1 << 12 | 1 << 13);
+        currentHealth = maxHealth;
+        GameReferences.damage = damageAmount;
 
-			agent.updateRotation = false;
-			Quaternion targetRot = Quaternion.Euler(currentWaypoint.lookEulers);
-			mTransform.rotation = Quaternion.Slerp(mTransform.rotation, targetRot, delta / rotateSpeed);
+        cachedFovAngleCos = Mathf.Cos(fovAngle * Mathf.Deg2Rad);
+        sqrAttackDistance = attackDistance * attackDistance;
+    }
 
-			if (waitTimer < currentWaypoint.waitTime)
-			{
-				waitTimer += delta;
-			}
-			else
-			{
-				waitTimer = 0;
-				index++;
-				if (index > waypoints.Length - 1)
-				{
-					index = 0;
-				}
-			}
-		}
-	}
+    private void Update()
+    {
+        float delta = Time.deltaTime;
 
-	public float fireRate = .1f;
-	float currentFire;
-	bool initRange;
-
-	private void HandleAggressiveLogic(float delta)
-	{
-		if (currentTarget != null)
-		{
-			if (!RaycastToTarget(currentTarget))
-			{
-				lastKnownDirection = (currentTarget.mTransform.position - lastKnownPosition).normalized;
-				hasTargetRotation = true;
-				scanTime = Random.Range(minScanTime, maxScanTime);
-				aIPhase = AIPhase.scanRan;
-				currentTarget = null;
-			}
-		}
-
-		bool inRange = false;
-
-		float dis = Vector3.Distance(lastKnownPosition, mTransform.position);
-		agent.SetDestination(lastKnownPosition);
-		#region Handle Raycast to target
-		if (currentTarget != null)
-		{
-			if (dis < attackDistance)
-			{
-				inRange = true;
-
-				if (!initRange)
-				{
-					AssignRanomBulletsToFire();
-					PlayCautionState(cautionTimerNormal, delta, false);
-					currentFire = fireRate;
-					initRange = true;
-				}
-				agent.isStopped = true;
-
-				HandleLookAtTarget(delta);
-
-				if (currentFire < 0)
-				{
-					currentFire = fireRate;
-					HandleShooting();
-
-					if (bulletsToFire <= 0)
-					{
-						AssignRanomBulletsToFire();
-						PlayCautionState(cautionTimerNormal, delta, false);
-					}
-				}
-				else
-				{
-					currentFire -= delta;
-				}
-			}
-			else
-			{
-				initRange = false;
-				agent.updateRotation = true;
-				agent.isStopped = false;
-				HandleDetection();
-			}
-		}
-		else
-		{
-			initRange = false;
-			agent.updateRotation = true;
-			agent.isStopped = false;
-			HandleDetection();
-
-			if (agent.remainingDistance < agent.stoppingDistance || agent.pathStatus == NavMeshPathStatus.PathInvalid || agent.pathStatus == NavMeshPathStatus.PathPartial)
-			{
-				if (hasTargetRotation)
-				{
-					aIPhase = AIPhase.scanRan;
-					HandleRotation(lastKnownDirection, delta);
-
-					scanTime -= delta;
-					if (scanTime < 0)
-					{
-						hasTargetRotation = false;
-
-						int ran = Random.Range(0, 100);
-						if (ran > 50)
-						{
-							aIPhase = AIPhase.searchRan;
-						}
-					}
-				}
-				else
-				{
-					switch (aIPhase)
-					{
-						case AIPhase.scanRan:
-							FindRandomLookDirection();
-							break;
-						case AIPhase.searchRan:
-							SearchRandomPosition();
-							FindRandomLookDirection();
-							break;
-						case AIPhase.searchPOI:
-							break;
-						default:
-							break;
-					}
-				}
-			}
-		}
-		#endregion
-
-		#region Handle animations
-		if (currentTarget != null)
-		{
-			if (!inRange)
-			{
-				animator.SetFloat("movement", 1, 0.1f, delta);
-			}
-			else
-			{
-				animator.SetFloat("movement", 0);
-			}
-		}
-		else
-		{
-			if (agent.desiredVelocity.magnitude > 0)
-			{
-				animator.SetFloat("movement", 1, 0.1f, delta);
-			}
-			else
-			{
-				animator.SetFloat("movement", 0, 0.1f, delta);
-			}
-		}
-		#endregion
-	}
-
-	private void FindRandomLookDirection()
-	{
-		Vector2 r = Random.insideUnitCircle;
-		lastKnownDirection.x = r.x;
-		lastKnownDirection.z = r.y;
-
-		scanTime = Random.Range(minScanTime, maxScanTime);
-		hasTargetRotation = true;
-	}
-
-	private void SearchRandomPosition()
-	{
-		Vector3 r = Random.insideUnitSphere * fovRadius;
-
-		if (NavMesh.SamplePosition(mTransform.position + r, out NavMeshHit hit, 5, NavMesh.AllAreas))
-		{
-			lastKnownPosition = hit.position;
-		}
-	}
-
-	public ParticleSystem muzzleFire;
-
-	public enum AIPhase
-	{
-		scanRan, searchRan, searchPOI
-	}
-
-	[Header("Scan Settings")]
-	[Space(5)]
-	public AIPhase aIPhase;
-	public float scanTime;
-	public float minScanTime = 1;
-	public float maxScanTime = 3;
-	public bool hasTargetRotation;
-
-	private void AssignRanomBulletsToFire()
-	{
-		bulletsToFire = Random.Range(5, 20);
-		int bl = magBullets - timesShot;
-
-		if (bulletsToFire > bl)
-		{
-			bulletsToFire = bl;
-		}
-	}
-
-	private void HandleLookAtTarget(float delta)
-	{
-		//Vector3 dir = currentTarget.mTransform.position - mTransform.position;
-		Vector3 dir = lastKnownPosition - mTransform.position;
-		HandleRotation(dir, delta);
-	}
-
-	private void HandleRotation(Vector3 dir, float delta)
-	{
-		dir.y = 0;
-		if (dir == Vector3.zero)
-			dir = mTransform.forward;
-
-		Quaternion targetRot = Quaternion.LookRotation(dir);
-		mTransform.rotation = Quaternion.Slerp(mTransform.rotation, targetRot, delta / rotateSpeed);
-		agent.updateRotation = false;
-	}
-
-	private void HandleShooting()
-	{
-		timesShot++;
-		bulletsToFire--;
-		//muzzleFire.Play();
-		GameReferences.RaycastShoot(mTransform, inventoryManager.currentWeaponHook);
-		inventoryManager.currentWeaponHook.Shoot();
-
-		if (timesShot > magBullets)
-		{
-			timesShot = 0;
-			animator.CrossFade("Reload", 0.2f);
-			animator.CrossFade("Reload_Body", 0.2f);
-		}
-	}
-
-	private void PlayCautionState(float timer, float delta, bool crossfadeToState = true)
-	{
-		isCaution = true;
-		cautionTimer = timer;
-
-		if(!isGrab)
+        if (currentHealth <= 0)
         {
-			if (crossfadeToState)
-				animator.CrossFade("caution", 0.2f);
-		}
+            animator.Play("grab_death");
+            isDead = true;
+            enabled = false;
+            return;
+        }
 
-		
-		animator.SetFloat("movement", 0, 0.1f, delta);
-		isCaution = true;
-	}
-	public bool spotted = false;
-	bool RaycastToTarget(IPointOfInterest poi)
-	{
-		Vector3 dir = poi.GetTransform().position - mTransform.position;
-		dir.Normalize();
-		float angle = Vector3.Angle(mTransform.forward, dir);
-		if (angle < fovAngle)
-		{
-			Vector3 o = mTransform.position;
-			o.y += 1;
+        if (isGrab)
+            return;
 
-			Debug.DrawRay(o, dir * 50, Color.red);
-			if (Physics.Raycast(o, dir, out RaycastHit hit, 100, ignoreForDetection))
-			{
-				IPointOfInterest pointOfInterest = hit.transform.GetComponentInParent<IPointOfInterest>();
+        if (animator.GetBool("isInteracting"))
+        {
+            agent.isStopped = true;
+            if (animator.GetBool("canRotate"))
+                HandleLookAtTarget(delta);
+            return;
+        }
 
-				if (pointOfInterest != null)
-				{
-					spotted = true;
-					return pointOfInterest.OnDetect(this);
-				}
-				else
-				{
-					return false;
-				}
-			}
-			else
-			{
-				return false;
-			}
-		}
-		else
-		{
-			return false;
-		}
-	}
+        animator.SetBool("isAggressive", isAgressive);
+        animator.SetBool("isCaution", isCaution);
 
-	public void OnDetectPlayer(Controller targetPlayer)
-	{
-		alarmTimer = 25;
-		currentTarget = targetPlayer;
-		lastKnownPosition = currentTarget.transform.position;
-		SetToCautiousState();
-	}
+        if (!isAgressive)
+        {
+            agent.speed = normalSpeed;
+            HandleDetection();
+            HandleNormalLogic(delta);
+        }
+        else
+        {
+            HandleAggressiveState(delta);
+        }
+    }
 
-	public void SetToCautiousState(bool force = false)
-	{
-		if (!isAgressive || force)
-		{
-			emotionText.text = "?!";
-			emotionObj.SetActive(true);
+    // ============================
+    // Normal Patrol Logic
+    // ============================
 
+    private void HandleNormalLogic(float delta)
+    {
+        if (waypoints.Length == 0)
+            return;
 
-			cautionTimer = cautionTimerNormal;
-			isCaution = true;
-			isAgressive = true;
-			alarmTimer = 25;
+        currentWaypoint = waypoints[index];
+        Vector3 waypointPos = currentWaypoint.targetPosition.position;
+        float sqrDis = (mTransform.position - waypointPos).sqrMagnitude;
+        float sqrStopDis = agent.stoppingDistance * agent.stoppingDistance;
 
-			if(!isGrab)
+        if (sqrDis > sqrStopDis)
+        {
+            animator.SetFloat("movement", 1, 0.1f, delta);
+            agent.updateRotation = true;
+
+            if (!agent.hasPath)
+                agent.SetDestination(waypointPos);
+        }
+        else
+        {
+            animator.SetFloat("movement", 0, 0.1f, delta);
+            agent.updateRotation = false;
+
+            Quaternion targetRot = Quaternion.Euler(currentWaypoint.lookEulers);
+            mTransform.rotation = Quaternion.Slerp(mTransform.rotation, targetRot, delta / rotateSpeed);
+
+            waitTimer += delta;
+            if (waitTimer >= currentWaypoint.waitTime)
             {
-				animator.CrossFade("caution", 0.2f);
+                waitTimer = 0;
+                index = (index + 1) % waypoints.Length;
+            }
+        }
+    }
 
-			}
-			GameReferences.UpdateLastKnownPositionOfCloseby(lastKnownPosition, 15);
+    // ============================
+    // Aggressive State
+    // ============================
 
-		}
-	}
+    private void HandleAggressiveState(float delta)
+    {
+        if (isCaution)
+        {
+            if (cautionTimer < 0)
+            {
+                isCaution = false;
+                agent.isStopped = false;
+            }
+            else
+            {
+                if (animator.GetBool("canRotate"))
+                    HandleLookAtTarget(delta);
 
-	public void UpdateLastKnowPosition(Vector3 newPosition)
-	{
-		if (currentTarget == null)
-		{
-			lastKnownPosition = newPosition;
+                agent.isStopped = true;
+                cautionTimer -= delta;
+            }
+        }
+        else
+        {
+            agent.speed = aggressiveSpeed;
+            HandleAggressiveLogic(delta);
+        }
 
-			if (!isAgressive || Time.realtimeSinceStartup - lastCautionPlayed > 4)
-			{
-				lastCautionPlayed = Time.realtimeSinceStartup;
+        if (alarmTimer > 0)
+        {
+            alarmTimer -= delta;
+        }
+        else
+        {
+            alarmTimer = 0;
+            isCaution = false;
+            isAgressive = false;
+            currentTarget = null;
+        }
+    }
 
-				SetToCautiousState();
-			}
-		}
-	}
+    private void HandleAggressiveLogic(float delta)
+    {
+        if (currentTarget != null && !RaycastToTarget(currentTarget))
+        {
+            lastKnownDirection = (currentTarget.mTransform.position - lastKnownPosition).normalized;
+            hasTargetRotation = true;
+            scanTime = Random.Range(minScanTime, maxScanTime);
+            aIPhase = AIPhase.scanRan;
+            currentTarget = null;
+        }
 
-	private void HandleDetection()
-	{
-		Collider[] colliders = Physics.OverlapSphere(mTransform.position, fovRadius, controllerLayer);
+        bool inRange = false;
+        float sqrDis = (lastKnownPosition - mTransform.position).sqrMagnitude;
+        agent.SetDestination(lastKnownPosition);
 
-		for (int i = 0; i < colliders.Length; i++)
-		{
-			IPointOfInterest poi = colliders[i].transform.GetComponentInParent<IPointOfInterest>();
-			if (poi != null)
-			{
-				if (poi.GetTransform() != poiTransform)
-				{
-					if (RaycastToTarget(poi))
-					{
-						break;
-					}
-				}
-			}
-		}
-	}
+        if (currentTarget != null)
+        {
+            if (sqrDis < sqrAttackDistance)
+            {
+                inRange = true;
+                HandleInRangeCombat(delta);
+            }
+            else
+            {
+                initRange = false;
+                agent.updateRotation = true;
+                agent.isStopped = false;
+                HandleDetection();
+            }
+        }
+        else
+        {
+            initRange = false;
+            agent.updateRotation = true;
+            agent.isStopped = false;
+            HandleDetection();
+            HandleSearchBehavior(delta);
+        }
 
-	public void OnHit()
-	{
+        HandleAggressiveAnimations(inRange, delta);
+    }
 
-	}
+    private void HandleInRangeCombat(float delta)
+    {
+        if (!initRange)
+        {
+            AssignRandomBulletsToFire();
+            PlayCautionState(cautionTimerNormal, delta, false);
+            currentFire = fireRate;
+            initRange = true;
+        }
 
-	public string hitFx = "blood";
+        agent.isStopped = true;
+        HandleLookAtTarget(delta);
 
-	public string GetHitFx()
-	{
-		return hitFx;
-	}
+        if (currentFire < 0)
+        {
+            currentFire = fireRate;
+            HandleShooting();
 
-	public void StartGrab(Vector3 tp, Quaternion targetRotation)
-	{
-		agent.enabled = false;
-		mTransform.position = tp;
-		isGrab = true;
-		animator.Play("e_grab_start");
-		mTransform.rotation = targetRotation;
+            if (bulletsToFire <= 0)
+            {
+                AssignRandomBulletsToFire();
+                PlayCautionState(cautionTimerNormal, delta, false);
+            }
+        }
+        else
+        {
+            currentFire -= delta;
+        }
+    }
 
-		emotionText.text = "?!";
-		emotionObj.SetActive(true);
+    private void HandleSearchBehavior(float delta)
+    {
+        bool atDestination = agent.remainingDistance < agent.stoppingDistance
+            || agent.pathStatus == NavMeshPathStatus.PathInvalid
+            || agent.pathStatus == NavMeshPathStatus.PathPartial;
 
-		GameReferences.UpdateLastKnownPositionOfCloseby(mTransform.position, 2);
-	}
+        if (!atDestination)
+            return;
 
-	public void KillByGrab()
-	{
-		animator.Play("grab_death");
-		this.enabled = false;
-		isDead = true;
-	}
+        if (hasTargetRotation)
+        {
+            aIPhase = AIPhase.scanRan;
+            HandleRotation(lastKnownDirection, delta);
 
-	public void StopGrab(Controller target)
-	{
-		currentTarget = target;
-		lastKnownPosition = currentTarget.mTransform.position;
-		agent.enabled = true;
-		agent.updateRotation = true;
-		isGrab = false;
-		animator.Play("e_grab_cancel");
-		PlayCautionState(cautionTimerNormal, Time.deltaTime, false);
-	}
+            scanTime -= delta;
+            if (scanTime < 0)
+            {
+                hasTargetRotation = false;
+                if (Random.Range(0, 100) > 50)
+                    aIPhase = AIPhase.searchRan;
+            }
+        }
+        else
+        {
+            switch (aIPhase)
+            {
+                case AIPhase.scanRan:
+                    FindRandomLookDirection();
+                    break;
+                case AIPhase.searchRan:
+                    SearchRandomPosition();
+                    FindRandomLookDirection();
+                    break;
+                case AIPhase.searchPOI:
+                    break;
+            }
+        }
+    }
 
-	public Transform poiTransform;
+    private void HandleAggressiveAnimations(bool inRange, float delta)
+    {
+        if (currentTarget != null)
+        {
+            animator.SetFloat("movement", inRange ? 0 : 1, 0.1f, delta);
+        }
+        else
+        {
+            float movement = agent.desiredVelocity.sqrMagnitude > 0.01f ? 1 : 0;
+            animator.SetFloat("movement", movement, 0.1f, delta);
+        }
+    }
 
-	public bool OnDetect(AIController aIController)
-	{
-		if (this.isDead)
-		{
-			if (!isSpottedDead)
-			{
-				aIController.emotionText.text = "?";
-				aIController.emotionObj.SetActive(true);
-				aIController.UpdateLastKnowPosition(mTransform.position);
-				isSpottedDead = true;
-			}
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
+    // ============================
+    // Search Helpers
+    // ============================
 
-	public Transform GetTransform()
-	{
-		return poiTransform;
-	}
+    private void FindRandomLookDirection()
+    {
+        Vector2 r = Random.insideUnitCircle;
+        lastKnownDirection.x = r.x;
+        lastKnownDirection.z = r.y;
+        scanTime = Random.Range(minScanTime, maxScanTime);
+        hasTargetRotation = true;
+    }
 
-	public void OnHit(float dmgAmt)
-	{
-		if (currentTarget != null) // Check if currentTarget is not null
-		{
-			currentHealth -= currentTarget.dmgNumber;
-            //sound here
-            hitSoundSource.clip = hitSoundClips[index];
+    private void SearchRandomPosition()
+    {
+        Vector3 r = Random.insideUnitSphere * fovRadius;
+        if (NavMesh.SamplePosition(mTransform.position + r, out NavMeshHit hit, 5, NavMesh.AllAreas))
+            lastKnownPosition = hit.position;
+    }
+
+    // ============================
+    // Combat
+    // ============================
+
+    private void AssignRandomBulletsToFire()
+    {
+        bulletsToFire = Random.Range(5, 20);
+        int remaining = magBullets - timesShot;
+        if (bulletsToFire > remaining)
+            bulletsToFire = remaining;
+    }
+
+    private void HandleShooting()
+    {
+        timesShot++;
+        bulletsToFire--;
+
+        if (inventoryManager != null && inventoryManager.currentWeaponHook != null)
+        {
+            GameReferences.RaycastShoot(mTransform, inventoryManager.currentWeaponHook);
+            inventoryManager.currentWeaponHook.Shoot();
+        }
+
+        if (timesShot > magBullets)
+        {
+            timesShot = 0;
+            animator.CrossFade("Reload", 0.2f);
+            animator.CrossFade("Reload_Body", 0.2f);
+        }
+    }
+
+    // ============================
+    // Rotation
+    // ============================
+
+    private void HandleLookAtTarget(float delta)
+    {
+        Vector3 dir = lastKnownPosition - mTransform.position;
+        HandleRotation(dir, delta);
+    }
+
+    private void HandleRotation(Vector3 dir, float delta)
+    {
+        dir.y = 0;
+        if (dir == Vector3.zero)
+            dir = mTransform.forward;
+
+        Quaternion targetRot = Quaternion.LookRotation(dir);
+        mTransform.rotation = Quaternion.Slerp(mTransform.rotation, targetRot, delta / rotateSpeed);
+        agent.updateRotation = false;
+    }
+
+    // ============================
+    // Caution State
+    // ============================
+
+    private void PlayCautionState(float timer, float delta, bool crossfadeToState = true)
+    {
+        isCaution = true;
+        cautionTimer = timer;
+
+        if (!isGrab && crossfadeToState)
+            animator.CrossFade("caution", 0.2f);
+
+        animator.SetFloat("movement", 0, 0.1f, delta);
+    }
+
+    // ============================
+    // Detection (NonAlloc)
+    // ============================
+
+    bool RaycastToTarget(IPointOfInterest poi)
+    {
+        Vector3 poiPos = poi.GetTransform().position;
+        Vector3 dir = poiPos - mTransform.position;
+        dir.Normalize();
+
+        // Fast angle check using dot product instead of Vector3.Angle
+        float dot = Vector3.Dot(mTransform.forward, dir);
+        if (dot < cachedFovAngleCos)
+            return false;
+
+        Vector3 origin = mTransform.position;
+        origin.y += 1;
+
+        if (!Physics.Raycast(origin, dir, out RaycastHit hit, 100, ignoreForDetection))
+            return false;
+
+        IPointOfInterest pointOfInterest = hit.transform.GetComponentInParent<IPointOfInterest>();
+        if (pointOfInterest == null)
+            return false;
+
+        spotted = true;
+        return pointOfInterest.OnDetect(this);
+    }
+
+    private void HandleDetection()
+    {
+        int count = Physics.OverlapSphereNonAlloc(mTransform.position, fovRadius, detectionBuffer, controllerLayer);
+
+        for (int i = 0; i < count; i++)
+        {
+            IPointOfInterest poi = detectionBuffer[i].transform.GetComponentInParent<IPointOfInterest>();
+            if (poi != null && poi.GetTransform() != poiTransform)
+            {
+                if (RaycastToTarget(poi))
+                    break;
+            }
+        }
+    }
+
+    // ============================
+    // Public API — Player Detection
+    // ============================
+
+    public void OnDetectPlayer(Controller targetPlayer)
+    {
+        alarmTimer = 25;
+        currentTarget = targetPlayer;
+        lastKnownPosition = currentTarget.transform.position;
+        SetToCautiousState();
+    }
+
+    public void SetToCautiousState(bool force = false)
+    {
+        if (!isAgressive || force)
+        {
+            emotionText.text = "?!";
+            emotionObj.SetActive(true);
+
+            cautionTimer = cautionTimerNormal;
+            isCaution = true;
+            isAgressive = true;
+            alarmTimer = 25;
+
+            if (!isGrab)
+                animator.CrossFade("caution", 0.2f);
+
+            GameReferences.UpdateLastKnownPositionOfCloseby(lastKnownPosition, 15);
+        }
+    }
+
+    public void UpdateLastKnowPosition(Vector3 newPosition)
+    {
+        if (currentTarget != null)
+            return;
+
+        lastKnownPosition = newPosition;
+
+        if (!isAgressive || Time.realtimeSinceStartup - lastCautionPlayed > 4)
+        {
+            lastCautionPlayed = Time.realtimeSinceStartup;
+            SetToCautiousState();
+        }
+    }
+
+    // ============================
+    // Public API — Grab System
+    // ============================
+
+    public void StartGrab(Vector3 tp, Quaternion targetRotation)
+    {
+        agent.enabled = false;
+        mTransform.position = tp;
+        isGrab = true;
+        animator.Play("e_grab_start");
+        mTransform.rotation = targetRotation;
+
+        emotionText.text = "?!";
+        emotionObj.SetActive(true);
+
+        GameReferences.UpdateLastKnownPositionOfCloseby(mTransform.position, 2);
+    }
+
+    public void KillByGrab()
+    {
+        animator.Play("grab_death");
+        isDead = true;
+        enabled = false;
+    }
+
+    public void StopGrab(Controller target)
+    {
+        currentTarget = target;
+        lastKnownPosition = currentTarget.mTransform.position;
+        agent.enabled = true;
+        agent.updateRotation = true;
+        isGrab = false;
+        animator.Play("e_grab_cancel");
+        PlayCautionState(cautionTimerNormal, Time.deltaTime, false);
+    }
+
+    // ============================
+    // IShootable Implementation
+    // ============================
+
+    public void OnHit()
+    {
+    }
+
+    public string GetHitFx()
+    {
+        return hitFx;
+    }
+
+    public void OnHit(float dmgAmt)
+    {
+        currentHealth -= dmgAmt;
+        currentHealth = Mathf.Max(currentHealth, 0);
+
+        if (hitSoundSource != null && hitSoundClips != null && hitSoundClips.Length > 0)
+        {
+            int clipIndex = Random.Range(0, hitSoundClips.Length);
+            hitSoundSource.clip = hitSoundClips[clipIndex];
             hitSoundSource.Play();
-            Debug.Log($"Enemy hit for {currentTarget.dmgNumber} HP. Current health: {currentHealth}");
-			UpdateLastKnowPosition(transform.position);
-			currentHealth = Mathf.Max(currentHealth, 0);
-		}
-		else
-		{
-			Debug.LogError("Current target is null in AIController.");
-		}
-	}
+        }
+
+        UpdateLastKnowPosition(transform.position);
+    }
+
+    // ============================
+    // IPointOfInterest Implementation
+    // ============================
+
+    public bool OnDetect(AIController aIController)
+    {
+        if (!isDead)
+            return false;
+
+        if (!isSpottedDead)
+        {
+            aIController.emotionText.text = "?";
+            aIController.emotionObj.SetActive(true);
+            aIController.UpdateLastKnowPosition(mTransform.position);
+            isSpottedDead = true;
+        }
+
+        return true;
+    }
+
+    public Transform GetTransform()
+    {
+        return poiTransform;
+    }
 }
-
-
 
 [System.Serializable]
 public class Waypoint
 {
-
-	public Transform targetPosition;
-	public Vector3 lookEulers;
-	public float waitTime;
+    public Transform targetPosition;
+    public Vector3 lookEulers;
+    public float waitTime;
 }
