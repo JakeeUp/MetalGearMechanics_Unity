@@ -148,6 +148,22 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     static readonly Collider[] detectionBuffer = new Collider[16];
 
     // ============================
+    // Animator Hashes
+    // ============================
+
+    static readonly int hashIsInteracting = Animator.StringToHash("isInteracting");
+    static readonly int hashCanRotate = Animator.StringToHash("canRotate");
+    static readonly int hashIsAggressive = Animator.StringToHash("isAggressive");
+    static readonly int hashIsCaution = Animator.StringToHash("isCaution");
+    static readonly int hashMovement = Animator.StringToHash("movement");
+    static readonly int hashGrabDeath = Animator.StringToHash("grab_death");
+    static readonly int hashCaution = Animator.StringToHash("caution");
+    static readonly int hashReload = Animator.StringToHash("Reload");
+    static readonly int hashReloadBody = Animator.StringToHash("Reload_Body");
+    static readonly int hashGrabStart = Animator.StringToHash("e_grab_start");
+    static readonly int hashGrabCancel = Animator.StringToHash("e_grab_cancel");
+
+    // ============================
     // Cached Values
     // ============================
 
@@ -186,7 +202,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
         if (currentHealth <= 0)
         {
-            animator.Play("grab_death");
+            animator.Play(hashGrabDeath);
             isDead = true;
             enabled = false;
             return;
@@ -195,16 +211,16 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         if (isGrab)
             return;
 
-        if (animator.GetBool("isInteracting"))
+        if (animator.GetBool(hashIsInteracting))
         {
             agent.isStopped = true;
-            if (animator.GetBool("canRotate"))
+            if (animator.GetBool(hashCanRotate))
                 HandleLookAtTarget(delta);
             return;
         }
 
-        animator.SetBool("isAggressive", isAgressive);
-        animator.SetBool("isCaution", isCaution);
+        animator.SetBool(hashIsAggressive, isAgressive);
+        animator.SetBool(hashIsCaution, isCaution);
 
         if (!isAgressive)
         {
@@ -234,7 +250,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
         if (sqrDis > sqrStopDis)
         {
-            animator.SetFloat("movement", 1, 0.1f, delta);
+            animator.SetFloat(hashMovement, 1, 0.1f, delta);
             agent.updateRotation = true;
 
             if (!agent.hasPath)
@@ -242,7 +258,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         }
         else
         {
-            animator.SetFloat("movement", 0, 0.1f, delta);
+            animator.SetFloat(hashMovement, 0, 0.1f, delta);
             agent.updateRotation = false;
 
             Quaternion targetRot = Quaternion.Euler(currentWaypoint.lookEulers);
@@ -272,7 +288,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
             }
             else
             {
-                if (animator.GetBool("canRotate"))
+                if (animator.GetBool(hashCanRotate))
                     HandleLookAtTarget(delta);
 
                 agent.isStopped = true;
@@ -413,12 +429,12 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     {
         if (currentTarget != null)
         {
-            animator.SetFloat("movement", inRange ? 0 : 1, 0.1f, delta);
+            animator.SetFloat(hashMovement, inRange ? 0 : 1, 0.1f, delta);
         }
         else
         {
             float movement = agent.desiredVelocity.sqrMagnitude > 0.01f ? 1 : 0;
-            animator.SetFloat("movement", movement, 0.1f, delta);
+            animator.SetFloat(hashMovement, movement, 0.1f, delta);
         }
     }
 
@@ -468,8 +484,8 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         if (timesShot > magBullets)
         {
             timesShot = 0;
-            animator.CrossFade("Reload", 0.2f);
-            animator.CrossFade("Reload_Body", 0.2f);
+            animator.CrossFade(hashReload, 0.2f);
+            animator.CrossFade(hashReloadBody, 0.2f);
         }
     }
 
@@ -504,9 +520,9 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         cautionTimer = timer;
 
         if (!isGrab && crossfadeToState)
-            animator.CrossFade("caution", 0.2f);
+            animator.CrossFade(hashCaution, 0.2f);
 
-        animator.SetFloat("movement", 0, 0.1f, delta);
+        animator.SetFloat(hashMovement, 0, 0.1f, delta);
     }
 
     // ============================
@@ -578,7 +594,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
             alarmTimer = 25;
 
             if (!isGrab)
-                animator.CrossFade("caution", 0.2f);
+                animator.CrossFade(hashCaution, 0.2f);
 
             GameReferences.UpdateLastKnownPositionOfCloseby(lastKnownPosition, 15);
         }
@@ -607,7 +623,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         agent.enabled = false;
         mTransform.position = tp;
         isGrab = true;
-        animator.Play("e_grab_start");
+        animator.Play(hashGrabStart);
         mTransform.rotation = targetRotation;
 
         emotionText.text = "?!";
@@ -618,7 +634,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
     public void KillByGrab()
     {
-        animator.Play("grab_death");
+        animator.Play(hashGrabDeath);
         isDead = true;
         enabled = false;
     }
@@ -630,7 +646,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         agent.enabled = true;
         agent.updateRotation = true;
         isGrab = false;
-        animator.Play("e_grab_cancel");
+        animator.Play(hashGrabCancel);
         PlayCautionState(cautionTimerNormal, Time.deltaTime, false);
     }
 
@@ -659,7 +675,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
             hitSoundSource.Play();
         }
 
-        UpdateLastKnowPosition(transform.position);
+        UpdateLastKnowPosition(mTransform.position);
     }
 
     // ============================
