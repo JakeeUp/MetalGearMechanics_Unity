@@ -15,19 +15,25 @@ public class ObjectPooler : ScriptableObject
         poolDict.Clear();
 
         foreach (Pool p in pools)
+        {
+            p.Clear();
             poolDict.Add(p.poolId, p);
+        }
 
         parentObject = new GameObject("pool parent");
     }
 
     public GameObject GetObject(string id)
     {
+        // The pool parent is destroyed on scene load while this asset survives, so rebuild
+        if (parentObject == null)
+            Init();
+
         if (!poolDict.TryGetValue(id, out Pool value))
             return null;
 
-        GameObject go = value.GetObject();
+        GameObject go = value.GetObject(parentObject.transform);
         go.SetActive(false);
-        go.transform.parent = parentObject.transform;
         return go;
     }
 }
@@ -42,11 +48,17 @@ public class Pool
     [System.NonSerialized] List<GameObject> createdObjects = new List<GameObject>();
     [System.NonSerialized] int index;
 
-    public GameObject GetObject()
+    public void Clear()
+    {
+        createdObjects.Clear();
+        index = 0;
+    }
+
+    public GameObject GetObject(Transform parent)
     {
         if (createdObjects.Count < budget)
         {
-            GameObject go = GameObject.Instantiate(prefab);
+            GameObject go = GameObject.Instantiate(prefab, parent);
             createdObjects.Add(go);
             return go;
         }
