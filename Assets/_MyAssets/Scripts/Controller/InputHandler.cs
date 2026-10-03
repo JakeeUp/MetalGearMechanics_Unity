@@ -267,7 +267,12 @@ public class InputHandler : MonoBehaviour
             controller.isCrouch = false;
             controller.HandleRotation(moveDirection, delta);
 
-            if (Input.GetMouseButton(0))
+            WeaponItem weapon = controller.inventoryManager.currentWeapon;
+            bool fireInput = weapon != null && weapon.isAutomatic
+                ? Input.GetMouseButton(0)
+                : Input.GetMouseButtonDown(0);
+
+            if (fireInput)
                 controller.HandleShooting();
 
             if (controller.inventoryManager.currentWeapon != null && controller.inventoryManager.currentWeapon.canMoveWithWeapon)

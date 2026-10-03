@@ -9,4 +9,6 @@ public class WeaponItem : Item
     public float fireRate = 0.1f;
     public float weaponSpread = .2f;
     public bool canMoveWithWeapon;
+    [Tooltip("Hold to fire. When off, the weapon fires once per click (semi-auto).")]
+    public bool isAutomatic;
 }

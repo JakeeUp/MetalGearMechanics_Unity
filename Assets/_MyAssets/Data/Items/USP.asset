@@ -21,3 +21,4 @@ MonoBehaviour:
   fireRate: 0.1
   weaponSpread: 0.2
   canMoveWithWeapon: 1
+  isAutomatic: 0
