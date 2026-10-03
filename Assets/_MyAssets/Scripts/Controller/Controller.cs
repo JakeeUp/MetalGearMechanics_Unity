@@ -64,7 +64,7 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
         get { return _isCrouch; }
         set
         {
-            animator.SetBool("isProne", false);
+            animator.SetBool(hashIsProne, false);
             _isCrouch = value;
         }
     }
@@ -110,6 +110,24 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
     public float grabDistance = 1;
     public AudioClip gruntSound;
     float lastShot;
+    bool isDying;
+
+    // ============================
+    // Animator Hashes
+    // ============================
+
+    static readonly int hashIsProne = Animator.StringToHash("isProne");
+    static readonly int hashIsCrouch = Animator.StringToHash("isCrouch");
+    static readonly int hashIsWall = Animator.StringToHash("isWall");
+    static readonly int hashIsAiming = Animator.StringToHash("isAiming");
+    static readonly int hashCanRotate = Animator.StringToHash("canRotate");
+    static readonly int hashMovement = Animator.StringToHash("movement");
+    static readonly int hashGrabStruggle = Animator.StringToHash("p_grab_struggle");
+    static readonly int hashEnemyGrabStruggle = Animator.StringToHash("e_grab_struggle");
+    static readonly int hashGrabFinish = Animator.StringToHash("p_grab_finish");
+    static readonly int hashGrabCancel = Animator.StringToHash("p_grab_cancel");
+    static readonly int hashGrabStart = Animator.StringToHash("p_grab_start");
+    static readonly int hashGrabEmpty = Animator.StringToHash("p_grab_empty");
 
     // ============================
     // Properties
@@ -169,8 +187,9 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
 
     private void HandleDeath()
     {
-        if (currentHealth <= 0)
+        if (currentHealth <= 0 && !isDying)
         {
+            isDying = true;
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
             SceneManager.LoadScene("DeathScene");
@@ -183,7 +202,7 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
 
     public void Move(Vector3 moveDirection, float delta)
     {
-        if (animator.GetBool("canRotate"))
+        if (animator.GetBool(hashCanRotate))
             moveDirection = Vector3.zero;
 
         float speed = isAiming ? aimSpeed : moveSpeed;
@@ -242,7 +261,7 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
         else
             m = m < 0 ? -1 : 1;
 
-        animator.SetFloat("movement", m, 0.1f, delta);
+        animator.SetFloat(hashMovement, m, 0.1f, delta);
         wallCamParent.localPosition = Vector3.Lerp(wallCamParent.localPosition, wallCamTargetPos, delta / 0.2f);
     }
 
@@ -260,7 +279,7 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
             {
                 isProne = true;
                 HandleRotation(moveDirection, delta);
-                animator.SetBool("canRotate", false);
+                animator.SetBool(hashCanRotate, false);
             }
         }
         else
@@ -268,7 +287,7 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
             if (moveAmount > 0)
             {
                 isProne = false;
-                if (animator.GetBool("canRotate"))
+                if (animator.GetBool(hashCanRotate))
                 {
                     rigidbody.velocity = Vector3.zero;
                     HandleRotation(moveDirection, delta);
@@ -303,10 +322,10 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
 
     public void HandleAnimationStates()
     {
-        animator.SetBool("isCrouch", isCrouch);
-        animator.SetBool("isWall", isWall);
-        animator.SetBool("isAiming", isAiming);
-        animator.SetBool("isProne", isProne);
+        animator.SetBool(hashIsCrouch, isCrouch);
+        animator.SetBool(hashIsWall, isWall);
+        animator.SetBool(hashIsAiming, isAiming);
+        animator.SetBool(hashIsProne, isProne);
 
         if (inventoryManager.currentWeaponHook != null)
             inventoryManager.currentWeaponHook.gameObject.SetActive(isAiming);
@@ -322,17 +341,17 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
         switch (controllerState)
         {
             case ControllerState.cardboardBox:
-                boxAnimator.SetFloat("movement", m, 0.1f, delta);
+                boxAnimator.SetFloat(hashMovement, m, 0.1f, delta);
                 break;
         }
 
-        animator.SetFloat("movement", m, 0.1f, delta);
+        animator.SetFloat(hashMovement, m, 0.1f, delta);
     }
 
     public void HandleGrabAnimation(float moveAmount, float delta)
     {
-        animator.SetFloat("movement", moveAmount, 0.1f, delta);
-        currentGrabbed.animator.SetFloat("movement", moveAmount, 0.1f, delta);
+        animator.SetFloat(hashMovement, moveAmount, 0.1f, delta);
+        currentGrabbed.animator.SetFloat(hashMovement, moveAmount, 0.1f, delta);
     }
 
     // ============================
@@ -362,14 +381,14 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
         {
             spottedSoundSource.clip = gruntSound;
             spottedSoundSource.PlayOneShot(gruntSound);
-            animator.Play("p_grab_struggle");
-            currentGrabbed.animator.Play("e_grab_struggle");
+            animator.Play(hashGrabStruggle);
+            currentGrabbed.animator.Play(hashEnemyGrabStruggle);
             currentGrabbed.timesStruggle++;
 
             if (currentGrabbed.timesStruggle > 2)
             {
                 isGrab = false;
-                animator.Play("p_grab_finish");
+                animator.Play(hashGrabFinish);
                 currentGrabbed.KillByGrab();
                 currentGrabbed = null;
                 return;
@@ -386,7 +405,7 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
             if (currentGrabbed != null)
             {
                 isGrab = false;
-                animator.Play("p_grab_cancel");
+                animator.Play(hashGrabCancel);
                 currentGrabbed.StopGrab(this);
                 currentGrabbed = null;
             }
@@ -409,14 +428,14 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
             {
                 Vector3 tp = mTransform.forward * grabOffset + mTransform.position;
                 aIController.StartGrab(tp, mTransform.rotation);
-                animator.Play("p_grab_start");
+                animator.Play(hashGrabStart);
                 isGrab = true;
                 currentGrabbed = aIController;
                 return;
             }
         }
 
-        animator.Play("p_grab_empty");
+        animator.Play(hashGrabEmpty);
     }
 
     public void HandleEnemyPositionOnGrab()
