@@ -37,6 +37,9 @@ public class InputHandler : MonoBehaviour
     float grabDeadTimer;
     LayerMask ignoreForWall;
     PlayerControls inputActions;
+    bool wallCameraActive;
+
+    static readonly int hashIsInteracting = Animator.StringToHash("isInteracting");
 
     public enum ExecutionOrder { fixedUpdate, update, lateUpdate }
 
@@ -50,8 +53,7 @@ public class InputHandler : MonoBehaviour
         inputActions.Player.Movement.performed += ctx => moveInputDirection = ctx.ReadValue<Vector2>();
         inputActions.Enable();
 
-        cameraManager.wallCameraObject.SetActive(false);
-        cameraManager.mainCameraObject.SetActive(true);
+        SetWallCamera(false, true);
         cameraManager.fpsCameraObject.SetActive(false);
         cameraManager.mainCamera.cullingMask = ~0;
 
@@ -119,7 +121,7 @@ public class InputHandler : MonoBehaviour
         bool doubleGrab = false;
         bool switchWeapon = Input.GetKeyDown(KeyCode.Q);
 
-        if (Input.GetKey(KeyCode.Escape))
+        if (Input.GetKeyDown(KeyCode.Escape))
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
@@ -140,7 +142,7 @@ public class InputHandler : MonoBehaviour
                 grabInput = false;
         }
 
-        controller.isInteracting = controller.animator.GetBool("isInteracting");
+        controller.isInteracting = controller.animator.GetBool(hashIsInteracting);
 
         if (switchWeapon && controller.inventoryManager != null)
             controller.inventoryManager.SwitchWeapon();
@@ -306,7 +308,7 @@ public class InputHandler : MonoBehaviour
             return;
         }
 
-        Vector3 origin = controller.transform.position;
+        Vector3 origin = controller.mTransform.position;
         origin.y += controller.getWallDetectOrigin;
 
         bool willStickToWall = false;
@@ -323,19 +325,16 @@ public class InputHandler : MonoBehaviour
 
         if (willStickToWall)
         {
-            wallCameraTarget.transform.position = controller.transform.position;
-            wallCameraTarget.transform.rotation = Quaternion.LookRotation(wallNormal);
+            wallCameraTarget.SetPositionAndRotation(controller.mTransform.position, Quaternion.LookRotation(wallNormal));
             controller.isProne = false;
             controller.isWall = true;
             controller.WallMovement(moveDir, wallNormal, delta, ignoreForWall);
-            cameraManager.wallCameraObject.SetActive(true);
-            cameraManager.mainCameraObject.SetActive(false);
+            SetWallCamera(true);
         }
         else
         {
             controller.isWall = false;
-            cameraManager.wallCameraObject.SetActive(false);
-            cameraManager.mainCameraObject.SetActive(true);
+            SetWallCamera(false);
 
             if (controller.isCrouch)
             {
@@ -348,5 +347,16 @@ public class InputHandler : MonoBehaviour
                 controller.HandleMovementAnimations(moveAmount, delta);
             }
         }
+    }
+
+    // Only touch the camera objects when the wall state actually changes
+    void SetWallCamera(bool active, bool force = false)
+    {
+        if (!force && wallCameraActive == active)
+            return;
+
+        wallCameraActive = active;
+        cameraManager.wallCameraObject.SetActive(active);
+        cameraManager.mainCameraObject.SetActive(!active);
     }
 }
