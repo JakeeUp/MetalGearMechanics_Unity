@@ -11,6 +11,10 @@ public class CardboardBox : PassiveItem, Jacob.Utilities.IIcon
         go.transform.localRotation = Quaternion.identity;
         go.transform.localScale = Vector3.one;
 
+        // The box model doubles as a world pickup; strip that so the equipped copy doesn't re-pick itself up
+        foreach (PickableItem pickup in go.GetComponentsInChildren<PickableItem>())
+            Destroy(pickup);
+
         controller.storedObject = go;
         controller.animator.gameObject.SetActive(false);
         controller.controllerState = Controller.ControllerState.cardboardBox;

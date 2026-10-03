@@ -105,6 +105,10 @@ public class InventoryManager : MonoBehaviour
 
     public void LoadItem(Item targetItem)
     {
+        // Only items the player has actually picked up can be equipped from the inventory
+        if (!pickedUpItems.Contains(targetItem))
+            return;
+
         if (targetItem is WeaponItem weapon)
         {
             LoadWeapon(weapon);
