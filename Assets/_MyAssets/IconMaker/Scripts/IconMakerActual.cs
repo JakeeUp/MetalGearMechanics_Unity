@@ -53,6 +53,13 @@ namespace Jacob.Utilities
 				r.gameObject.layer = asset.renderLayer;
 			}
 
+			// The copy is only photographed: disable its colliders so triggers on it
+			// (e.g. an item's world pickup) can't fire while it exists
+			foreach (Collider c in go.GetComponentsInChildren<Collider>())
+			{
+				c.enabled = false;
+			}
+
 			renderCamera.targetTexture = asset.renderTexture;
 			yield return new WaitForEndOfFrame();
 			RenderTexture currentRT = RenderTexture.active;
