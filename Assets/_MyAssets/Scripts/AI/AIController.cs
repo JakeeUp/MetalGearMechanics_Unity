@@ -190,7 +190,6 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         controllerLayer = 1 << 9;
         ignoreForDetection = ~(1 << 12 | 1 << 13);
         currentHealth = maxHealth;
-        GameReferences.damage = damageAmount;
 
         cachedFovAngleCos = Mathf.Cos(fovAngle * Mathf.Deg2Rad);
         sqrAttackDistance = attackDistance * attackDistance;
@@ -477,7 +476,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
         if (inventoryManager != null && inventoryManager.currentWeaponHook != null)
         {
-            GameReferences.RaycastShoot(mTransform, inventoryManager.currentWeaponHook);
+            GameReferences.RaycastShoot(mTransform, inventoryManager.currentWeaponHook, damageAmount);
             inventoryManager.currentWeaponHook.Shoot();
         }
 

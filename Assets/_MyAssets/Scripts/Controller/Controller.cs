@@ -367,7 +367,7 @@ public class Controller : MonoBehaviour, IShootable, IPointOfInterest
         {
             lastShot = Time.realtimeSinceStartup;
             inventoryManager.currentWeaponHook.Shoot();
-            GameReferences.RaycastShoot(mTransform, inventoryManager.currentWeaponHook);
+            GameReferences.RaycastShoot(mTransform, inventoryManager.currentWeaponHook, inventoryManager.currentWeapon.damageValue);
         }
     }
 

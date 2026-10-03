@@ -4,7 +4,6 @@ public static class GameReferences
 {
     public static LayerMask ignoreForShooting;
     public static LayerMask controllersLayer;
-    public static float damage;
 
     static ObjectPooler _objectPooler;
     static readonly Collider[] nearbyBuffer = new Collider[32];
@@ -22,7 +21,7 @@ public static class GameReferences
         }
     }
 
-    public static void RaycastShoot(Transform mTransform, WeaponHook weaponHook)
+    public static void RaycastShoot(Transform mTransform, WeaponHook weaponHook, float damage)
     {
         if (objectPooler == null)
             return;
