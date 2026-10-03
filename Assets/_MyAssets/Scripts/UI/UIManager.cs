@@ -118,6 +118,7 @@ public class InventoryUI
 
     [System.NonSerialized] float t;
     [System.NonSerialized] float lastChange;
+    [System.NonSerialized] GridLayoutGroup gridLayout;
 
     public void OpenAllSlots()
     {
@@ -169,7 +170,9 @@ public class InventoryUI
                 currentObject = createdItems[curIndex];
                 Vector2 position = invGrid.localPosition;
                 startPosition = position;
-                position.y = curIndex * invGrid.GetComponent<GridLayoutGroup>().cellSize.y;
+                if (gridLayout == null)
+                    gridLayout = invGrid.GetComponent<GridLayoutGroup>();
+                position.y = curIndex * gridLayout.cellSize.y;
                 targetYPosition = position;
                 t = 0;
 
