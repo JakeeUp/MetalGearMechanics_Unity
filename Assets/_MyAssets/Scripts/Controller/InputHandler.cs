@@ -61,8 +61,9 @@ public class InputHandler : MonoBehaviour
         GameReferences.ignoreForShooting = ~(1 << 12 | 1 << 13);
         GameReferences.controllersLayer = 1 << 9;
 
-        if (controller.inventoryManager != null)
-            UIManager.singleton.Init(controller.inventoryManager);
+        // Look the inventory up directly: Controller.Start (which sets controller.inventoryManager)
+        // isn't guaranteed to have run yet, and skipping Init hides every inventory slot
+        UIManager.singleton.Init(controller.GetComponentInParent<InventoryManager>());
 
         List<Jacob.Utilities.IIcon> iconList = new List<Jacob.Utilities.IIcon>();
         iconList.AddRange(ResourcesManager.singleton.GetAllItems());
