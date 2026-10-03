@@ -7,16 +7,6 @@ public class ItemSlot : MonoBehaviour
     public Image img;
     public Item targetItem;
 
-    private void OnEnable()
-    {
-        if (UIManager.singleton == null || targetItem == null)
-            return;
-
-        bool isValid = UIManager.singleton.isInInventory(targetItem);
-        if (!isValid)
-            gameObject.SetActive(false);
-    }
-
     public void LoadItem(Item item)
     {
         targetItem = item;

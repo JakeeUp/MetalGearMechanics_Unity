@@ -70,7 +70,7 @@ public class UIManager : MonoBehaviour
         {
             if (!leftUI.invGameObject.activeInHierarchy)
             {
-                leftUI.OpenAllSlots();
+                leftUI.OpenOwnedSlots(this);
                 leftUI.invGameObject.SetActive(true);
             }
 
@@ -87,7 +87,7 @@ public class UIManager : MonoBehaviour
         {
             if (!rightUI.invGameObject.activeInHierarchy)
             {
-                rightUI.OpenAllSlots();
+                rightUI.OpenOwnedSlots(this);
                 rightUI.invGameObject.SetActive(true);
             }
 
@@ -112,6 +112,8 @@ public class InventoryUI
 
     [System.NonSerialized]
     List<ItemSlot> createdItems = new List<ItemSlot>();
+    [System.NonSerialized]
+    List<ItemSlot> ownedItems = new List<ItemSlot>();
     ItemSlot currentObject;
     Vector2 targetYPosition;
     Vector2 startPosition;
@@ -120,10 +122,18 @@ public class InventoryUI
     [System.NonSerialized] float lastChange;
     [System.NonSerialized] GridLayoutGroup gridLayout;
 
-    public void OpenAllSlots()
+    // Show only the slots for items the player has picked up; navigation cycles through these
+    public void OpenOwnedSlots(UIManager uiManager)
     {
+        ownedItems.Clear();
+
         for (int i = 0; i < createdItems.Count; i++)
-            createdItems[i].gameObject.SetActive(true);
+        {
+            bool owned = uiManager.isInInventory(createdItems[i].targetItem);
+            createdItems[i].gameObject.SetActive(owned);
+            if (owned)
+                ownedItems.Add(createdItems[i]);
+        }
     }
 
     public void CreateSlotsForList(List<Item> items, GameObject slotPrefab)
@@ -148,7 +158,7 @@ public class InventoryUI
 
     public void Tick(float vertical, float delta, InventoryManager inv)
     {
-        if (createdItems == null || createdItems.Count == 0)
+        if (ownedItems.Count == 0)
             return;
 
         if (Mathf.Abs(vertical) > 0.5f)
@@ -159,15 +169,15 @@ public class InventoryUI
                 lastChange = Time.realtimeSinceStartup;
 
                 bool isDown = vertical < 0;
-                int curIndex = createdItems.IndexOf(currentObject);
+                int curIndex = ownedItems.IndexOf(currentObject);
                 curIndex = isDown ? curIndex - 1 : curIndex + 1;
 
                 if (curIndex < 0)
-                    curIndex = createdItems.Count - 1;
-                if (curIndex > createdItems.Count - 1)
+                    curIndex = ownedItems.Count - 1;
+                if (curIndex > ownedItems.Count - 1)
                     curIndex = 0;
 
-                currentObject = createdItems[curIndex];
+                currentObject = ownedItems[curIndex];
                 Vector2 position = invGrid.localPosition;
                 startPosition = position;
                 if (gridLayout == null)
