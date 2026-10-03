@@ -28,6 +28,10 @@ public class WeaponHook : MonoBehaviour
         particles = GetComponentsInChildren<ParticleSystem>();
         baseItem = weaponItem;
         currentAmmo = baseItem.magazineAmmo;
+
+        // The weapon object is toggled on every aim, so it must not replay the last shot when enabled
+        if (gunSoundSource != null)
+            gunSoundSource.playOnAwake = false;
     }
 
     public void Shoot()
