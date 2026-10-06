@@ -2,7 +2,7 @@
 
 # Metal Gear Mechanics
 
-**Stealth-action gameplay systems inspired by Metal Gear Solid — built in Unity**
+A third-person stealth game in Unity, built around mechanics from Metal Gear Solid
 
 ![Unity](https://img.shields.io/badge/Unity-2022.3%20LTS-000000?logo=unity)
 ![C#](https://img.shields.io/badge/C%23-10-239120?logo=csharp)
@@ -14,69 +14,68 @@
 
 </div>
 
----
+![Bridge gunfight](screenshots/header.gif)
 
 ## Overview
 
-Metal Gear Mechanics is a third-person stealth-action game built in Unity that recreates core gameplay systems from the Metal Gear Solid series. Features include AI guard patrols with FOV-based detection, CQC grab mechanics, wall cover with dynamic camera transitions, a cardboard box disguise system, ranged combat with bullet spread and magazine management, and an inventory/loadout system.
-
-![Game Overview](screenshots/header.gif)
-
----
+This is my attempt at recreating the core systems from Metal Gear Solid in Unity. Guards patrol and spot you with a field-of-view check, you can grab them from behind with CQC, hug walls while the camera swings around, hide under a cardboard box, and shoot your way out when all of that fails. Guns have bullet spread and magazines, and there's an inventory for the weapons and items you pick up.
 
 ## Features
 
-### Stealth & Detection System
-AI guards patrol predefined waypoints with field-of-view detection. Sneak past enemies, use cover, and stay out of sight to avoid triggering alerts. When spotted, nearby guards are alerted and converge on your last known position.
+### Stealth and detection
 
-![Stealth Gameplay](screenshots/stealth.gif)
+Guards walk set waypoint routes and check for you inside a view cone. If one spots you, the guards nearby get your last known position and head there, so the goal is to stay out of sight and use cover.
+
+![Stealth gameplay](screenshots/stealth.gif)
 
 ### Combat
-Engage enemies with ranged weapons featuring realistic gunplay — bullet spread, magazine management, and muzzle flash VFX. Enemies return fire and search for the player when line-of-sight is broken.
 
-![Combat Demo](screenshots/combat.gif)
+Shots have spread, you have to manage your magazine, and the muzzle flash is a particle effect. Guards shoot back, and if you break line of sight they go looking for you.
 
-### CQC Grab System
-Get close to enemies and grab them from behind. Struggle mechanics determine whether you overpower the guard or they break free and alert others.
+![Combat demo](screenshots/combat.gif)
 
-![CQC Grab Demo](screenshots/grab.gif)
+### CQC grab
 
-### Cardboard Box
-Hide in plain sight with the iconic cardboard box. Guards will ignore you while stationary, but moving while inside the box will blow your cover.
+Sneak up behind a guard and grab them. They'll struggle, and either you overpower them or they break free and alert the others.
 
-![Cardboard Box Demo](screenshots/cardboard_box.gif)
+![CQC grab demo](screenshots/grab.gif)
 
-### Wall Cover System
-Stick to walls and peek around corners with a dynamic camera system that shifts perspective based on your position along the wall.
+### Cardboard box
 
-![Wall Cover Demo](screenshots/wall_cover.gif)
+Guards ignore the box as long as it stays still. Move while they're looking and you're caught.
 
-### Inventory & Weapons
-Pick up weapons and items throughout the level. Switch between weapons on the fly with a scrollable inventory UI.
+![Cardboard box demo](screenshots/cardboard_box.gif)
+
+### Wall cover
+
+Press against a wall to lean and peek around corners. The camera changes angle depending on where you are along the wall.
+
+![Wall cover demo](screenshots/wall_cover.gif)
+
+### Inventory and weapons
+
+You pick up weapons and items around the level and swap between them from a scrollable inventory.
 
 ![Inventory](screenshots/inventory.png)
 
----
+## AI behavior
 
-## AI Behavior
+Each guard runs a state machine with four states:
 
-Guards feature a full behavioral state machine:
-
-| State | Behavior |
+| State | What the guard does |
 |-------|----------|
-| **Patrol** | Follow waypoint routes with configurable wait times and look directions |
-| **Caution** | Investigate suspicious activity with scan/search phases |
-| **Aggressive** | Engage the player with ranged combat, reload cycles, and position tracking |
-| **Search** | Sweep the area when the player breaks line-of-sight |
+| Patrol | Walks a waypoint route, with a wait time and look direction you can set per point |
+| Caution | Investigates something suspicious by scanning and searching |
+| Aggressive | Shoots at the player, reloads, and keeps track of where the player is |
+| Search | Sweeps the area after losing line of sight |
 
-![AI Patrol Demo](screenshots/ai_patrol.gif)
+![AI patrol demo](screenshots/ai_patrol.gif)
 
-### Alert & Countdown System
-When detected, an alarm countdown triggers across the HUD. Evade long enough and guards return to their patrol routes.
+### Alert countdown
 
-![Alert System](screenshots/alert.png)
+Getting spotted starts an alarm countdown on the HUD. If you stay hidden until it runs out, the guards go back to their patrols.
 
----
+![Alert HUD](screenshots/alert.png)
 
 ## Screenshots
 
@@ -85,46 +84,36 @@ When detected, an alarm countdown triggers across the HUD. Evade long enough and
 | ![Screenshot 1](screenshots/screenshot_1.png) | ![Screenshot 2](screenshots/screenshot_2.png) |
 | ![Screenshot 3](screenshots/screenshot_3.png) | ![Screenshot 4](screenshots/screenshot_4.png) |
 
----
-
 ## Controls
 
 | Action | Input |
 |--------|-------|
 | Move | WASD |
-| Aim | Right Mouse Button |
-| Shoot | Left Mouse Button (while aiming) |
-| Grab | Left Mouse Button (hold) |
+| Aim | Right mouse button |
+| Shoot | Left mouse button (while aiming) |
+| Grab | Hold left mouse button |
 | Crouch | C |
-| Free Look | F |
-| Switch Weapon | Q |
+| Free look | F |
+| Switch weapon | Q |
 | Inventory | Left Ctrl |
-| Pause / Menu | Escape |
+| Pause / menu | Escape |
 
----
+## Tech stack
 
-## Tech Stack
-
-| Layer | Technology | Purpose |
+| Layer | Technology | Used for |
 |-------|-----------|---------|
-| **Engine** | Unity 2022.3 LTS | Game engine and runtime |
-| **Language** | C# | All gameplay scripts |
-| **Camera** | Cinemachine | Third-person, wall cover, and FPS cameras |
-| **AI Navigation** | NavMesh | Pathfinding and agent movement |
-| **Input** | Unity Input System + Legacy | Player controls |
-| **UI** | TextMeshPro, Unity UI | HUD, inventory, menus |
-| **Physics** | Unity Physics | Raycasting, triggers, collision detection |
-| **VFX** | Particle System | Muzzle flash, hit effects |
+| Engine | Unity 2022.3 LTS | Game engine and runtime |
+| Language | C# | All gameplay scripts |
+| Camera | Cinemachine | Third-person, wall cover, and FPS cameras |
+| AI navigation | NavMesh | Pathfinding and agent movement |
+| Input | Unity Input System + legacy input | Player controls |
+| UI | TextMeshPro, Unity UI | HUD, inventory, menus |
+| Physics | Unity Physics | Raycasts, triggers, collisions |
+| VFX | Particle System | Muzzle flash and hit effects |
 
----
+## Getting started
 
-## Getting Started
-
-### Prerequisites
-
-- Unity **2022.3 LTS** (any 2022.3.x patch)
-
-### Run
+You need Unity 2022.3 LTS (any 2022.3.x patch works).
 
 ```bash
 git clone https://github.com/JakeeUp/MetalGearMechanics_Unity.git
@@ -134,9 +123,7 @@ git clone https://github.com/JakeeUp/MetalGearMechanics_Unity.git
 2. Open `Assets/_MyAssets/Scenes/MainMenuScene`
 3. Press Play
 
----
-
-## Project Structure
+## Project structure
 
 ```
 Assets/_MyAssets/
@@ -154,8 +141,6 @@ Assets/_MyAssets/
 └── Art/
 ```
 
----
-
 ## License
 
-This project is for educational and portfolio purposes.
+This project is for educational and portfolio use.
