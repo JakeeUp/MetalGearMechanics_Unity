@@ -20,6 +20,22 @@ A third-person stealth game in Unity, built around mechanics from Metal Gear Sol
 
 This is my attempt at recreating the core systems from Metal Gear Solid in Unity. Guards patrol and spot you with a field-of-view check, you can grab them from behind with CQC, hug walls while the camera swings around, hide under a cardboard box, and shoot your way out when all of that fails. Guns have bullet spread and magazines, and there's an inventory for the weapons and items you pick up.
 
+## About this project
+
+I built the first version in fall 2023 for a game programming class at UIW, following tutorials to get each system working. The early commit history is from that semester, and you can tell from the messages which nights went badly.
+
+In 2026 I came back to it as an exercise: read the whole project with what I know now, find what was wrong, and fix it. That pass covered:
+
+- Splitting the guard AI out of one 700-line class driven by bool flags into separate state classes (more on that below)
+- Fixing inventory bugs, like being able to equip items you never picked up
+- Cutting per-frame allocations by caching animator hashes and switching physics queries to their non-allocating versions
+- Fixing object pooling after a scene reload
+- Moving loose scripts into the right folders and cleaning up naming
+
+The guard AI was the hardest part, both times. Guards have to see you, warn each other, chase, lose you, and search, and in the original version all of that ran through the same `Update` method. One detail that came out of the rewrite: when a guard raises the alarm, the alert also reaches the guard that sent it. The old code only avoided an infinite loop by accident, because of the order its flags were set in. Now the guard enters its alert state before warning anyone, and a comment explains why.
+
+All the code under `Assets/_MyAssets/Scripts` is mine. The character models, animations, environment kits, PSX shader and particle effects are third-party assets.
+
 ## Features
 
 ### Stealth and detection
@@ -60,14 +76,17 @@ You pick up weapons and items around the level and swap between them from a scro
 
 ## AI behavior
 
-Each guard runs a state machine with four states:
+Each guard runs a state machine. Every state is its own class in `Scripts/AI/States`, and `AIController` holds the shared pieces (detection, movement, shooting) and switches between them.
 
 | State | What the guard does |
 |-------|----------|
 | Patrol | Walks a waypoint route, with a wait time and look direction you can set per point |
-| Caution | Investigates something suspicious by scanning and searching |
-| Aggressive | Shoots at the player, reloads, and keeps track of where the player is |
-| Search | Sweeps the area after losing line of sight |
+| Caution | The "?!" moment: stops and turns toward whatever it noticed, then chases or searches |
+| Combat | Chases while it can see you and fires in bursts once in range, reloading when the magazine runs out |
+| Search | Runs to where it last saw you, then scans and checks random nearby spots |
+| Grabbed | Held in CQC; the player's grab code drives it until it's killed or breaks free |
+
+The inspector shows each guard's current state while the game runs, which makes it easier to debug.
 
 <p align="center"><img src="screenshots/ai_patrol.gif" alt="AI patrol demo"></p>
 
@@ -128,7 +147,8 @@ git clone https://github.com/JakeeUp/MetalGearMechanics_Unity.git
 ```
 Assets/_MyAssets/
 ├── Scripts/
-│   ├── AI/                 # Enemy AI controller, patrol, detection, combat
+│   ├── AI/                 # AIController: detection, movement, shooting
+│   │   └── States/         # Patrol, Caution, Combat, Search, Grabbed
 │   ├── Controller/         # Player controller, input handling
 │   ├── Items/              # Weapons, pickups, cardboard box, consumables
 │   ├── Managers/           # Inventory, camera, resources, game management
