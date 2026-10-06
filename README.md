@@ -20,7 +20,7 @@
 
 Metal Gear Mechanics is a third-person stealth-action game built in Unity that recreates core gameplay systems from the Metal Gear Solid series. Features include AI guard patrols with FOV-based detection, CQC grab mechanics, wall cover with dynamic camera transitions, a cardboard box disguise system, ranged combat with bullet spread and magazine management, and an inventory/loadout system.
 
-![Game Overview](screenshots/header.png)
+![Game Overview](screenshots/header.gif)
 
 ---
 
