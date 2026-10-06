@@ -14,7 +14,7 @@ A third-person stealth game in Unity, built around mechanics from Metal Gear Sol
 
 </div>
 
-![Bridge gunfight](screenshots/header.gif)
+<p align="center"><img src="screenshots/header.gif" alt="Bridge gunfight"></p>
 
 ## Overview
 
@@ -26,37 +26,37 @@ This is my attempt at recreating the core systems from Metal Gear Solid in Unity
 
 Guards walk set waypoint routes and check for you inside a view cone. If one spots you, the guards nearby get your last known position and head there, so the goal is to stay out of sight and use cover.
 
-![Stealth gameplay](screenshots/stealth.gif)
+<p align="center"><img src="screenshots/stealth.gif" alt="Stealth gameplay"></p>
 
 ### Combat
 
 Shots have spread, you have to manage your magazine, and the muzzle flash is a particle effect. Guards shoot back, and if you break line of sight they go looking for you.
 
-![Combat demo](screenshots/combat.gif)
+<p align="center"><img src="screenshots/combat.gif" alt="Combat demo"></p>
 
 ### CQC grab
 
 Sneak up behind a guard and grab them. They'll struggle, and either you overpower them or they break free and alert the others.
 
-![CQC grab demo](screenshots/grab.gif)
+<p align="center"><img src="screenshots/grab.gif" alt="CQC grab demo"></p>
 
 ### Cardboard box
 
 Guards ignore the box as long as it stays still. Move while they're looking and you're caught.
 
-![Cardboard box demo](screenshots/cardboard_box.gif)
+<p align="center"><img src="screenshots/cardboard_box.gif" alt="Cardboard box demo"></p>
 
 ### Wall cover
 
 Press against a wall to lean and peek around corners. The camera changes angle depending on where you are along the wall.
 
-![Wall cover demo](screenshots/wall_cover.gif)
+<p align="center"><img src="screenshots/wall_cover.gif" alt="Wall cover demo"></p>
 
 ### Inventory and weapons
 
 You pick up weapons and items around the level and swap between them from a scrollable inventory.
 
-![Inventory](screenshots/inventory.png)
+<p align="center"><img src="screenshots/inventory.png" alt="Inventory"></p>
 
 ## AI behavior
 
@@ -69,13 +69,13 @@ Each guard runs a state machine with four states:
 | Aggressive | Shoots at the player, reloads, and keeps track of where the player is |
 | Search | Sweeps the area after losing line of sight |
 
-![AI patrol demo](screenshots/ai_patrol.gif)
+<p align="center"><img src="screenshots/ai_patrol.gif" alt="AI patrol demo"></p>
 
 ### Alert countdown
 
 Getting spotted starts an alarm countdown on the HUD. If you stay hidden until it runs out, the guards go back to their patrols.
 
-![Alert HUD](screenshots/alert.png)
+<p align="center"><img src="screenshots/alert.png" alt="Alert HUD"></p>
 
 ## Screenshots
 
