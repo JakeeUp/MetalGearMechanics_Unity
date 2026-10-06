@@ -20,7 +20,6 @@
 
 Metal Gear Mechanics is a third-person stealth-action game built in Unity that recreates core gameplay systems from the Metal Gear Solid series. Features include AI guard patrols with FOV-based detection, CQC grab mechanics, wall cover with dynamic camera transitions, a cardboard box disguise system, ranged combat with bullet spread and magazine management, and an inventory/loadout system.
 
-<!-- Replace with a screenshot of the full game -->
 ![Game Overview](screenshots/header.png)
 
 ---
@@ -30,37 +29,31 @@ Metal Gear Mechanics is a third-person stealth-action game built in Unity that r
 ### Stealth & Detection System
 AI guards patrol predefined waypoints with field-of-view detection. Sneak past enemies, use cover, and stay out of sight to avoid triggering alerts. When spotted, nearby guards are alerted and converge on your last known position.
 
-<!-- Replace with a GIF showing stealth gameplay and getting detected -->
 ![Stealth Gameplay](screenshots/stealth.gif)
 
 ### Combat
 Engage enemies with ranged weapons featuring realistic gunplay — bullet spread, magazine management, and muzzle flash VFX. Enemies return fire and search for the player when line-of-sight is broken.
 
-<!-- Replace with a GIF showing combat and enemy reactions -->
 ![Combat Demo](screenshots/combat.gif)
 
 ### CQC Grab System
 Get close to enemies and grab them from behind. Struggle mechanics determine whether you overpower the guard or they break free and alert others.
 
-<!-- Replace with a GIF showing the grab, struggle, and kill/release -->
 ![CQC Grab Demo](screenshots/grab.gif)
 
 ### Cardboard Box
 Hide in plain sight with the iconic cardboard box. Guards will ignore you while stationary, but moving while inside the box will blow your cover.
 
-<!-- Replace with a GIF showing box stealth and getting caught while moving -->
 ![Cardboard Box Demo](screenshots/cardboard_box.gif)
 
 ### Wall Cover System
 Stick to walls and peek around corners with a dynamic camera system that shifts perspective based on your position along the wall.
 
-<!-- Replace with a GIF showing wall cover and camera transitions -->
 ![Wall Cover Demo](screenshots/wall_cover.gif)
 
 ### Inventory & Weapons
 Pick up weapons and items throughout the level. Switch between weapons on the fly with a scrollable inventory UI.
 
-<!-- Replace with a screenshot or GIF of the inventory system -->
 ![Inventory](screenshots/inventory.png)
 
 ---
@@ -76,13 +69,11 @@ Guards feature a full behavioral state machine:
 | **Aggressive** | Engage the player with ranged combat, reload cycles, and position tracking |
 | **Search** | Sweep the area when the player breaks line-of-sight |
 
-<!-- Replace with a GIF showing AI state transitions -->
 ![AI Patrol Demo](screenshots/ai_patrol.gif)
 
 ### Alert & Countdown System
 When detected, an alarm countdown triggers across the HUD. Evade long enough and guards return to their patrol routes.
 
-<!-- Replace with a screenshot of the alert HUD -->
 ![Alert System](screenshots/alert.png)
 
 ---
