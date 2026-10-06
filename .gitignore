@@ -106,3 +106,15 @@ crashlytics-build.properties
 /Assets/_MyAssets/SciFi Warehouse Kit.meta
 /Assets/_MyAssets/Imports/
 /Assets/_MyAssets/Imports.meta
+
+# Copyrighted music and stock images used locally only
+/Assets/_MyAssets/_Music/MGS4 OST (02_Title Screen).mp3
+/Assets/_MyAssets/_Music/MGS4 OST (02_Title Screen).mp3.meta
+/Assets/_MyAssets/_Music/Main Menu Theme - Metal Gear Rising_ Revengeance.mp3
+/Assets/_MyAssets/_Music/Main Menu Theme - Metal Gear Rising_ Revengeance.mp3.meta
+/Assets/_MyAssets/_Music/04 - Cavern.mp3
+/Assets/_MyAssets/_Music/04 - Cavern.mp3.meta
+/Assets/_MyAssets/Mats/istockphoto-627040406-612x612.jpg
+/Assets/_MyAssets/Mats/istockphoto-627040406-612x612.jpg.meta
+/Assets/_MyAssets/Mats/61-4TZoT3QL._AC_UF894,1000_QL80_-Recovered.png
+/Assets/_MyAssets/Mats/61-4TZoT3QL._AC_UF894,1000_QL80_-Recovered.png.meta
