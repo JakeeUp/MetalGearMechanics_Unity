@@ -70,3 +70,39 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Third-party asset packs (not redistributable; import them from their sources)
+/Assets/AnimationsToon/
+/Assets/AnimationsToon.meta
+/Assets/Basic Movement Pack/
+/Assets/Basic Movement Pack.meta
+/Assets/Building Construction/
+/Assets/Building Construction.meta
+/Assets/Cyberpunk street/
+/Assets/Cyberpunk street.meta
+/Assets/DreamTeamMobile/
+/Assets/DreamTeamMobile.meta
+/Assets/Geopipe/
+/Assets/Geopipe.meta
+/Assets/Imminence - Sci-fi Soldiers/
+/Assets/Imminence - Sci-fi Soldiers.meta
+/Assets/Mercenary - Low Poly Assassin/
+/Assets/Mercenary - Low Poly Assassin.meta
+/Assets/Morgue Room PBR/
+/Assets/Morgue Room PBR.meta
+/Assets/PolyWorkshop/
+/Assets/PolyWorkshop.meta
+/Assets/Rain Fx/
+/Assets/Rain Fx.meta
+/Assets/Raptor3D/
+/Assets/Raptor3D.meta
+/Assets/Ultra Skybox Fog/
+/Assets/Ultra Skybox Fog.meta
+/Assets/UnityTechnologies/
+/Assets/UnityTechnologies.meta
+/Assets/boxes_pack/
+/Assets/boxes_pack.meta
+/Assets/_MyAssets/SciFi Warehouse Kit/
+/Assets/_MyAssets/SciFi Warehouse Kit.meta
+/Assets/_MyAssets/Imports/
+/Assets/_MyAssets/Imports.meta

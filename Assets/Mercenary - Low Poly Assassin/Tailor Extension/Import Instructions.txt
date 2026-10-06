@@ -1,5 +1,0 @@
-Thank you for your purchase of our assets! 
-
-Import the included .unitypackage to make this asset compatible with Tailor: Low Poly Modular Characters. To customize with this asset, place this loadable character prefab in a scene with the Tailor Customizer UI.
-
-If you have any questions or concerns, email us at distantlands.productions@gmail.com!
