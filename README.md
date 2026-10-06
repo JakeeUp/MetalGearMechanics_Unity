@@ -8,7 +8,7 @@ A third-person stealth game in Unity, built around mechanics from Metal Gear Sol
 ![C#](https://img.shields.io/badge/C%23-10-239120?logo=csharp)
 ![Cinemachine](https://img.shields.io/badge/camera-Cinemachine-blue)
 ![NavMesh](https://img.shields.io/badge/AI-NavMesh-orange)
-![License](https://img.shields.io/badge/license-Educational-green)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 [Features](#features) · [Controls](#controls) · [Getting Started](#getting-started) · [Project Structure](#project-structure)
 
@@ -143,4 +143,4 @@ Assets/_MyAssets/
 
 ## License
 
-This project is for educational and portfolio use.
+The code is under the [MIT license](LICENSE). Third-party art, animation and audio assets keep their own licenses.
