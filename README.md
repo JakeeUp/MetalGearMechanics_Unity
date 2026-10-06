@@ -142,6 +142,13 @@ git clone https://github.com/JakeeUp/MetalGearMechanics_Unity.git
 2. Open `Assets/_MyAssets/Scenes/MainMenuScene`
 3. Press Play
 
+The repo only has my code and my own assets. The art, animation and environment packs aren't mine to redistribute, so they're left out, and the scenes will show missing models and materials until you import them yourself. The packs, by the folder name they import into:
+
+- `Assets/`: AnimationsToon, Basic Movement Pack, Building Construction, Cyberpunk street, DreamTeamMobile, Geopipe, Imminence - Sci-fi Soldiers, Mercenary - Low Poly Assassin, Morgue Room PBR, PolyWorkshop, Rain Fx, Raptor3D, Ultra Skybox Fog, UnityTechnologies (Particle Pack), boxes_pack
+- `Assets/_MyAssets/`: SciFi Warehouse Kit, plus the PSX effects, low-poly soldiers, health pickup, UI prefabs and Quikhand font in `Imports/`
+
+The menu and level music are left out for the same reason.
+
 ## Project structure
 
 ```
