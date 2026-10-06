@@ -2,17 +2,19 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.AI;
 
+// Guard AI. Behavior lives in the state classes under AI/States; this class
+// owns the components and tuning values, the shared helpers the states use
+// (detection, rotation, shooting), and the public API other systems call.
 public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 {
     // ============================
     // Component References
     // ============================
 
-    NavMeshAgent agent;
-    new Rigidbody rigidbody;
+    internal NavMeshAgent agent;
     public Animator animator;
     InventoryManager inventoryManager;
-    Transform mTransform;
+    internal Transform mTransform;
 
     // ============================
     // Health
@@ -29,20 +31,28 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     [Space(5)]
     public int index;
     public Waypoint[] waypoints;
-    Waypoint currentWaypoint;
 
     // ============================
-    // State Flags
+    // State Machine
     // ============================
 
-    [Header("Bools")]
+    [Header("State")]
     [Space(5)]
-    [SerializeField] private bool _isAgressive;
-    public bool isAgressive { get { return _isAgressive; } set { _isAgressive = value; } }
-    [SerializeField] private bool isCaution;
-    [SerializeField] private bool isGrab;
+    [SerializeField, Tooltip("Read only. Shows the active state for debugging.")]
+    private string currentStateName;
     public bool isDead;
     public bool isSpottedDead;
+
+    internal PatrolState patrolState;
+    internal CautionState cautionState;
+    internal CombatState combatState;
+    internal SearchState searchState;
+    internal GrabbedState grabbedState;
+
+    public AIState CurrentState { get; private set; }
+
+    // True from the moment the guard is alerted until the alarm runs out.
+    public bool isAgressive => CurrentState != null && CurrentState.IsAlerted;
 
     // ============================
     // Timers
@@ -50,10 +60,9 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
     [Header("Wait Timer")]
     [Space(5)]
-    float waitTimer;
-    float cautionTimer;
     public float alarmTimer;
     public float cautionTimerNormal = .7f;
+    const float AlarmDuration = 25f;
 
     // ============================
     // Movement
@@ -76,8 +85,6 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     [SerializeField] private float damageAmount = 10f;
     public float weaponSpread = .3f;
     public int magBullets = 40;
-    int bulletsToFire;
-    int timesShot;
     public int timesStruggle;
     float lastCautionPlayed;
 
@@ -88,11 +95,14 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     }
 
     public float attackDistance = 5;
-    Vector3 lastKnownPosition;
-    Vector3 lastKnownDirection;
+    internal Vector3 lastKnownPosition;
+    internal Vector3 lastKnownDirection;
     Controller currentTarget;
     LayerMask controllerLayer;
     LayerMask ignoreForDetection;
+
+    public bool HasTarget => currentTarget != null;
+    public float SqrAttackDistance => sqrAttackDistance;
 
     // ============================
     // UI
@@ -111,27 +121,20 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     [SerializeField] private AudioClip[] hitSoundClips;
 
     // ============================
-    // Shooting State
+    // Shooting
     // ============================
 
     public float fireRate = .1f;
-    float currentFire;
-    bool initRange;
     public ParticleSystem muzzleFire;
 
     // ============================
     // Search / Scan
     // ============================
 
-    public enum AIPhase { scanRan, searchRan, searchPOI }
-
     [Header("Scan Settings")]
     [Space(5)]
-    public AIPhase aIPhase;
-    public float scanTime;
     public float minScanTime = 1;
     public float maxScanTime = 3;
-    public bool hasTargetRotation;
 
     // ============================
     // Detection
@@ -152,10 +155,10 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     // ============================
 
     static readonly int hashIsInteracting = Animator.StringToHash("isInteracting");
-    static readonly int hashCanRotate = Animator.StringToHash("canRotate");
+    internal static readonly int hashCanRotate = Animator.StringToHash("canRotate");
     static readonly int hashIsAggressive = Animator.StringToHash("isAggressive");
     static readonly int hashIsCaution = Animator.StringToHash("isCaution");
-    static readonly int hashMovement = Animator.StringToHash("movement");
+    internal static readonly int hashMovement = Animator.StringToHash("movement");
     static readonly int hashGrabDeath = Animator.StringToHash("grab_death");
     static readonly int hashCaution = Animator.StringToHash("caution");
     static readonly int hashReload = Animator.StringToHash("Reload");
@@ -174,17 +177,22 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     // Lifecycle
     // ============================
 
+    private void Awake()
+    {
+        patrolState = new PatrolState(this);
+        cautionState = new CautionState(this);
+        combatState = new CombatState(this);
+        searchState = new SearchState(this);
+        grabbedState = new GrabbedState(this);
+    }
+
     private void Start()
     {
         hitSoundSource = GetComponent<AudioSource>();
         agent = GetComponentInChildren<NavMeshAgent>();
-        rigidbody = GetComponentInChildren<Rigidbody>();
         animator = GetComponentInChildren<Animator>();
         inventoryManager = GetComponentInChildren<InventoryManager>();
         mTransform = transform;
-
-        if (waypoints.Length > 0)
-            currentWaypoint = waypoints[index];
 
         animator.applyRootMotion = false;
         controllerLayer = 1 << 9;
@@ -193,6 +201,9 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
         cachedFovAngleCos = Mathf.Cos(fovAngle * Mathf.Deg2Rad);
         sqrAttackDistance = attackDistance * attackDistance;
+
+        if (CurrentState == null)
+            ChangeState(patrolState);
     }
 
     private void Update()
@@ -201,304 +212,88 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
         if (currentHealth <= 0)
         {
-            animator.Play(hashGrabDeath);
-            isDead = true;
-            enabled = false;
+            Die();
             return;
         }
 
-        if (isGrab)
+        if (CurrentState == grabbedState)
             return;
 
         if (animator.GetBool(hashIsInteracting))
         {
             agent.isStopped = true;
             if (animator.GetBool(hashCanRotate))
-                HandleLookAtTarget(delta);
+                LookAtLastKnownPosition(delta);
             return;
         }
 
         animator.SetBool(hashIsAggressive, isAgressive);
-        animator.SetBool(hashIsCaution, isCaution);
+        animator.SetBool(hashIsCaution, CurrentState == cautionState);
 
-        if (!isAgressive)
-        {
-            agent.speed = normalSpeed;
-            HandleDetection();
-            HandleNormalLogic(delta);
-        }
-        else
-        {
-            HandleAggressiveState(delta);
-        }
+        bool wasAlerted = isAgressive;
+        CurrentState.Tick(delta);
+
+        if (wasAlerted)
+            TickAlarm(delta);
     }
 
     // ============================
-    // Normal Patrol Logic
+    // State Machine
     // ============================
 
-    private void HandleNormalLogic(float delta)
+    internal void ChangeState(AIState next)
     {
-        if (waypoints.Length == 0)
+        if (next == CurrentState)
             return;
 
-        currentWaypoint = waypoints[index];
-        Vector3 waypointPos = currentWaypoint.targetPosition.position;
-        float sqrDis = (mTransform.position - waypointPos).sqrMagnitude;
-        float sqrStopDis = agent.stoppingDistance * agent.stoppingDistance;
-
-        if (sqrDis > sqrStopDis)
-        {
-            animator.SetFloat(hashMovement, 1, 0.1f, delta);
-            agent.updateRotation = true;
-
-            if (!agent.hasPath)
-                agent.SetDestination(waypointPos);
-        }
-        else
-        {
-            animator.SetFloat(hashMovement, 0, 0.1f, delta);
-            agent.updateRotation = false;
-
-            Quaternion targetRot = Quaternion.Euler(currentWaypoint.lookEulers);
-            mTransform.rotation = Quaternion.Slerp(mTransform.rotation, targetRot, delta / rotateSpeed);
-
-            waitTimer += delta;
-            if (waitTimer >= currentWaypoint.waitTime)
-            {
-                waitTimer = 0;
-                index = (index + 1) % waypoints.Length;
-            }
-        }
+        AIState previous = CurrentState;
+        previous?.Exit();
+        CurrentState = next;
+        currentStateName = next.GetType().Name;
+        next.Enter(previous);
     }
 
-    // ============================
-    // Aggressive State
-    // ============================
-
-    private void HandleAggressiveState(float delta)
+    void TickAlarm(float delta)
     {
-        if (isCaution)
-        {
-            if (cautionTimer < 0)
-            {
-                isCaution = false;
-                agent.isStopped = false;
-            }
-            else
-            {
-                if (animator.GetBool(hashCanRotate))
-                    HandleLookAtTarget(delta);
-
-                agent.isStopped = true;
-                cautionTimer -= delta;
-            }
-        }
-        else
-        {
-            agent.speed = aggressiveSpeed;
-            HandleAggressiveLogic(delta);
-        }
-
         if (alarmTimer > 0)
         {
             alarmTimer -= delta;
-        }
-        else
-        {
-            alarmTimer = 0;
-            isCaution = false;
-            isAgressive = false;
-            currentTarget = null;
-        }
-    }
-
-    private void HandleAggressiveLogic(float delta)
-    {
-        if (currentTarget != null && !RaycastToTarget(currentTarget))
-        {
-            lastKnownDirection = (currentTarget.mTransform.position - lastKnownPosition).normalized;
-            hasTargetRotation = true;
-            scanTime = Random.Range(minScanTime, maxScanTime);
-            aIPhase = AIPhase.scanRan;
-            currentTarget = null;
-        }
-
-        bool inRange = false;
-        float sqrDis = (lastKnownPosition - mTransform.position).sqrMagnitude;
-        agent.SetDestination(lastKnownPosition);
-
-        if (currentTarget != null)
-        {
-            if (sqrDis < sqrAttackDistance)
-            {
-                inRange = true;
-                HandleInRangeCombat(delta);
-            }
-            else
-            {
-                initRange = false;
-                agent.updateRotation = true;
-                agent.isStopped = false;
-                HandleDetection();
-            }
-        }
-        else
-        {
-            initRange = false;
-            agent.updateRotation = true;
-            agent.isStopped = false;
-            HandleDetection();
-            HandleSearchBehavior(delta);
-        }
-
-        HandleAggressiveAnimations(inRange, delta);
-    }
-
-    private void HandleInRangeCombat(float delta)
-    {
-        if (!initRange)
-        {
-            AssignRandomBulletsToFire();
-            PlayCautionState(cautionTimerNormal, delta, false);
-            currentFire = fireRate;
-            initRange = true;
-        }
-
-        agent.isStopped = true;
-        HandleLookAtTarget(delta);
-
-        if (currentFire < 0)
-        {
-            currentFire = fireRate;
-            HandleShooting();
-
-            if (bulletsToFire <= 0)
-            {
-                AssignRandomBulletsToFire();
-                PlayCautionState(cautionTimerNormal, delta, false);
-            }
-        }
-        else
-        {
-            currentFire -= delta;
-        }
-    }
-
-    private void HandleSearchBehavior(float delta)
-    {
-        bool atDestination = agent.remainingDistance < agent.stoppingDistance
-            || agent.pathStatus == NavMeshPathStatus.PathInvalid
-            || agent.pathStatus == NavMeshPathStatus.PathPartial;
-
-        if (!atDestination)
             return;
-
-        if (hasTargetRotation)
-        {
-            aIPhase = AIPhase.scanRan;
-            HandleRotation(lastKnownDirection, delta);
-
-            scanTime -= delta;
-            if (scanTime < 0)
-            {
-                hasTargetRotation = false;
-                if (Random.Range(0, 100) > 50)
-                    aIPhase = AIPhase.searchRan;
-            }
         }
-        else
-        {
-            switch (aIPhase)
-            {
-                case AIPhase.scanRan:
-                    FindRandomLookDirection();
-                    break;
-                case AIPhase.searchRan:
-                    SearchRandomPosition();
-                    FindRandomLookDirection();
-                    break;
-                case AIPhase.searchPOI:
-                    break;
-            }
-        }
+
+        alarmTimer = 0;
+        currentTarget = null;
+        ChangeState(patrolState);
     }
 
-    private void HandleAggressiveAnimations(bool inRange, float delta)
+    internal void EnterCaution(float duration, float delta, bool crossfadeToState = true)
     {
-        if (currentTarget != null)
-        {
-            animator.SetFloat(hashMovement, inRange ? 0 : 1, 0.1f, delta);
-        }
-        else
-        {
-            float movement = agent.desiredVelocity.sqrMagnitude > 0.01f ? 1 : 0;
-            animator.SetFloat(hashMovement, movement, 0.1f, delta);
-        }
+        cautionState.SetDuration(duration);
+
+        if (crossfadeToState && CurrentState != grabbedState)
+            animator.CrossFade(hashCaution, 0.2f);
+
+        animator.SetFloat(hashMovement, 0, 0.1f, delta);
+        ChangeState(cautionState);
+    }
+
+    void Die()
+    {
+        animator.Play(hashGrabDeath);
+        isDead = true;
+        enabled = false;
     }
 
     // ============================
-    // Search Helpers
+    // Shared Helpers For States
     // ============================
 
-    private void FindRandomLookDirection()
+    internal void LookAtLastKnownPosition(float delta)
     {
-        Vector2 r = Random.insideUnitCircle;
-        lastKnownDirection.x = r.x;
-        lastKnownDirection.z = r.y;
-        scanTime = Random.Range(minScanTime, maxScanTime);
-        hasTargetRotation = true;
+        RotateTowards(lastKnownPosition - mTransform.position, delta);
     }
 
-    private void SearchRandomPosition()
-    {
-        Vector3 r = Random.insideUnitSphere * fovRadius;
-        if (NavMesh.SamplePosition(mTransform.position + r, out NavMeshHit hit, 5, NavMesh.AllAreas))
-            lastKnownPosition = hit.position;
-    }
-
-    // ============================
-    // Combat
-    // ============================
-
-    private void AssignRandomBulletsToFire()
-    {
-        bulletsToFire = Random.Range(5, 20);
-        int remaining = magBullets - timesShot;
-        if (bulletsToFire > remaining)
-            bulletsToFire = remaining;
-    }
-
-    private void HandleShooting()
-    {
-        timesShot++;
-        bulletsToFire--;
-
-        if (inventoryManager != null && inventoryManager.currentWeaponHook != null)
-        {
-            GameReferences.RaycastShoot(mTransform, inventoryManager.currentWeaponHook, damageAmount);
-            inventoryManager.currentWeaponHook.Shoot();
-        }
-
-        if (timesShot > magBullets)
-        {
-            timesShot = 0;
-            animator.CrossFade(hashReload, 0.2f);
-            animator.CrossFade(hashReloadBody, 0.2f);
-        }
-    }
-
-    // ============================
-    // Rotation
-    // ============================
-
-    private void HandleLookAtTarget(float delta)
-    {
-        Vector3 dir = lastKnownPosition - mTransform.position;
-        HandleRotation(dir, delta);
-    }
-
-    private void HandleRotation(Vector3 dir, float delta)
+    internal void RotateTowards(Vector3 dir, float delta)
     {
         dir.y = 0;
         if (dir == Vector3.zero)
@@ -509,19 +304,32 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         agent.updateRotation = false;
     }
 
-    // ============================
-    // Caution State
-    // ============================
-
-    private void PlayCautionState(float timer, float delta, bool crossfadeToState = true)
+    internal bool CanSeeTarget()
     {
-        isCaution = true;
-        cautionTimer = timer;
+        return currentTarget != null && RaycastToTarget(currentTarget);
+    }
 
-        if (!isGrab && crossfadeToState)
-            animator.CrossFade(hashCaution, 0.2f);
+    // Called when the player breaks line of sight. Remembers which way they
+    // were heading so the search starts by looking that way.
+    internal void LoseTarget()
+    {
+        lastKnownDirection = (currentTarget.mTransform.position - lastKnownPosition).normalized;
+        currentTarget = null;
+    }
 
-        animator.SetFloat(hashMovement, 0, 0.1f, delta);
+    internal void FireWeapon()
+    {
+        if (inventoryManager == null || inventoryManager.currentWeaponHook == null)
+            return;
+
+        GameReferences.RaycastShoot(mTransform, inventoryManager.currentWeaponHook, damageAmount);
+        inventoryManager.currentWeaponHook.Shoot();
+    }
+
+    internal void PlayReload()
+    {
+        animator.CrossFade(hashReload, 0.2f);
+        animator.CrossFade(hashReloadBody, 0.2f);
     }
 
     // ============================
@@ -553,7 +361,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         return pointOfInterest.OnDetect(this);
     }
 
-    private void HandleDetection()
+    internal void HandleDetection()
     {
         int count = Physics.OverlapSphereNonAlloc(mTransform.position, fovRadius, detectionBuffer, controllerLayer);
 
@@ -574,7 +382,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
     public void OnDetectPlayer(Controller targetPlayer)
     {
-        alarmTimer = 25;
+        alarmTimer = AlarmDuration;
         currentTarget = targetPlayer;
         lastKnownPosition = currentTarget.transform.position;
         SetToCautiousState();
@@ -582,21 +390,21 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
     public void SetToCautiousState(bool force = false)
     {
-        if (!isAgressive || force)
-        {
-            emotionText.text = "?!";
-            emotionObj.SetActive(true);
+        if (isAgressive && !force)
+            return;
 
-            cautionTimer = cautionTimerNormal;
-            isCaution = true;
-            isAgressive = true;
-            alarmTimer = 25;
+        emotionText.text = "?!";
+        emotionObj.SetActive(true);
+        alarmTimer = AlarmDuration;
 
-            if (!isGrab)
-                animator.CrossFade(hashCaution, 0.2f);
+        // Switch state before alerting others: the alert also reaches this
+        // guard, and being alerted already is what stops it from recursing.
+        if (CurrentState == grabbedState)
+            grabbedState.MarkAlerted();
+        else
+            EnterCaution(cautionTimerNormal, Time.deltaTime);
 
-            GameReferences.UpdateLastKnownPositionOfCloseby(lastKnownPosition, 15);
-        }
+        GameReferences.UpdateLastKnownPositionOfCloseby(lastKnownPosition, 15);
     }
 
     public void UpdateLastKnowPosition(Vector3 newPosition)
@@ -621,7 +429,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
     {
         agent.enabled = false;
         mTransform.position = tp;
-        isGrab = true;
+        ChangeState(grabbedState);
         animator.Play(hashGrabStart);
         mTransform.rotation = targetRotation;
 
@@ -633,9 +441,7 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
 
     public void KillByGrab()
     {
-        animator.Play(hashGrabDeath);
-        isDead = true;
-        enabled = false;
+        Die();
     }
 
     public void StopGrab(Controller target)
@@ -644,9 +450,8 @@ public class AIController : MonoBehaviour, IShootable, IPointOfInterest
         lastKnownPosition = currentTarget.mTransform.position;
         agent.enabled = true;
         agent.updateRotation = true;
-        isGrab = false;
         animator.Play(hashGrabCancel);
-        PlayCautionState(cautionTimerNormal, Time.deltaTime, false);
+        EnterCaution(cautionTimerNormal, Time.deltaTime, false);
     }
 
     // ============================
