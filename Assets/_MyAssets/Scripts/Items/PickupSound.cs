@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class pickupSound : MonoBehaviour
+public class PickupSound : MonoBehaviour
 {
     public AudioSource pickupSoundSource;
     public AudioClip pickupSoundClip;

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class healthBar : MonoBehaviour
+public class HealthBar : MonoBehaviour
 {
     Controller controller;
     public Slider healthSlider;
